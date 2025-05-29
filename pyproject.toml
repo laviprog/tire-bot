@@ -10,6 +10,7 @@ dependencies = [
     "isort>=6.0.1",
     "pydantic-settings>=2.9.1",
     "pytest>=8.3.5",
+    "redis>=5.0.0",
     "ruff>=0.11.8",
 ]
 
