@@ -1,3 +1,3 @@
-import logging
+from .register_handlers import register_handlers
 
-log = logging.getLogger(__name__)
+__all__ = ["register_handlers"]

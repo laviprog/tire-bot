@@ -3,10 +3,9 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 
-from src.bot.handlers.register_handlers import register_handlers
-from src.bot.middlewares import RedisMiddleware, UserServiceMiddleware
+from src.bot.handlers import register_handlers
+from src.bot.middlewares import register_middlewares
 from src.config import settings
-from src.database import sqlalchemy_config
 from src.redis import redis_context
 
 bot = Bot(
@@ -20,9 +19,7 @@ async def run_bot():
         storage = RedisStorage(redis)
         dp = Dispatcher(storage=storage)
 
-        dp.update.middleware(RedisMiddleware(redis))
-        dp.update.middleware(UserServiceMiddleware(config=sqlalchemy_config))
-
+        register_middlewares(dp, redis=redis)
         register_handlers(dp)
 
         try:
