@@ -1,3 +1,3 @@
-import logging
+from .bot import run_bot
 
-log = logging.getLogger(__name__)
+__all__ = ["run_bot"]

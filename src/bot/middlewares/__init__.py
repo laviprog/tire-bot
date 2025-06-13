@@ -1,4 +1,3 @@
-from .redis import RedisMiddleware
-from .user_service import UserServiceMiddleware
+from .register_middlewares import register_middlewares
 
-__all__ = ["RedisMiddleware", "UserServiceMiddleware"]
+__all__ = ["register_middlewares"]
