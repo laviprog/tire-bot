@@ -1,11 +1,14 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     Message,
     ReplyKeyboardMarkup,
     KeyboardButton,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
 )
 
+from src.motorcycles import MotorcycleService, MotorcycleModel
 from src.users import UserService
 
 router = Router()
@@ -14,16 +17,15 @@ router = Router()
 @router.message(CommandStart())
 async def start_command(message: Message, text: str | None = None):
     await message.answer(
-        text=f"Привет путник!\nЯ помогу тебе починить твой мот!" if not text else text,
+        text="Привет путник!\nЯ помогу тебе починить твой мот!" if not text else text,
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
-                    KeyboardButton(text="Кнопка 1"),
-                    KeyboardButton(text="Кнопка 2"),
+                    KeyboardButton(text="Мой гараж 🏍️"),
+                    KeyboardButton(text="Мой профиль 👤"),
                 ]
             ],
             resize_keyboard=True,
-            one_time_keyboard=True,
         ),
     )
 
@@ -40,6 +42,7 @@ async def help_comand(message: Message):
     )
 
 
+@router.message(F.text == "Мой профиль 👤")
 @router.message(Command("profile"))
 async def profile_command(message: Message, user_service: UserService):
     telegram_id = str(message.from_user.id)
@@ -63,19 +66,63 @@ async def profile_command(message: Message, user_service: UserService):
 
     await message.answer(
         text=f"👤 Ваш профиль:\nИмя: {user.name}\nТелефон: {user.phone_number}",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
                 [
-                    KeyboardButton(text="Изменить профиль"),
-                    KeyboardButton(text="Вернуться в начало ⬅️"),
+                    InlineKeyboardButton(
+                        text="Изменить профиль", callback_data=f"edit_user:{user.id}"
+                    ),
                 ]
             ],
             resize_keyboard=True,
-            one_time_keyboard=True,
         ),
     )
 
 
+@router.message(F.text == "Мой гараж 🏍️")
 @router.message(Command("garage"))
-async def garage_command(message: Message):
-    await message.answer("Скоро будет!")
+async def garage_command(message: Message, motorcycle_service: MotorcycleService):
+    telegram_id = str(message.from_user.id)
+
+    motorcycles = await motorcycle_service.list(MotorcycleModel.user_telegram_id == telegram_id)
+
+    if not motorcycles:
+        await message.answer(
+            text="Упсс, ваш гараж пуст. Самое время добавить мотоцикл!",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[
+                    [
+                        KeyboardButton(text="Добавить мотоцикл 🏍️"),
+                        KeyboardButton(text="Вернуться в начало ⬅️"),
+                    ]
+                ],
+                resize_keyboard=True,
+                one_time_keyboard=True,
+            ),
+        )
+        return
+
+    for motorcycle in motorcycles:
+        await message.answer(
+            text=(
+                f"🏍️ Мотоцикл:\n"
+                f"Имя: {motorcycle.name}\n"
+                f"Марка: {motorcycle.brand}\n"
+                f"Модель: {motorcycle.motorcycle_model}\n"
+                f"Движок: {motorcycle.engine}\n"
+                f"Год выпуска: {motorcycle.year}\n"
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="Изменить", callback_data=f"edit_motorcycle:{motorcycle.id}"
+                        ),
+                        InlineKeyboardButton(
+                            text="Удалить", callback_data=f"delete_motorcycle:{motorcycle.id}"
+                        ),
+                    ]
+                ],
+                resize_keyboard=True,
+            ),
+        )
