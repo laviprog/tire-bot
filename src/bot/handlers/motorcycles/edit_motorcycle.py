@@ -223,6 +223,5 @@ async def motorcycle_update_year_process(
                 ]
             ],
             resize_keyboard=True,
-            one_time_keyboard=True,
         ),
     )

@@ -7,6 +7,8 @@ from sqlalchemy import engine_from_config, pool
 from src.config import settings
 from src.users.models import UserModel  # noqa
 from src.motorcycles.models import MotorcycleModel # noqa
+from src.applications.models import ApplicationModel # noqa
+from src.promo_codes.models import PromoCodeModel # noqa
 
 config = context.config
 
