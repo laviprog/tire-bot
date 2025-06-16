@@ -10,7 +10,7 @@ from src.motorcycles import MotorcycleModel, MotorcycleService
 router = Router()
 
 
-class MotorcycleRegistration(StatesGroup):
+class MotorcycleCreate(StatesGroup):
     name = State()
     brand = State()
     motorcycle_model = State()
@@ -18,17 +18,17 @@ class MotorcycleRegistration(StatesGroup):
     year = State()
 
 
-@router.message(F.text == "Добавить мотоцикл 🏍️")
-async def start_register_motorcycle(message: Message, state: FSMContext):
+@router.message(F.text == "Добавить мотоцикл ➕")
+async def start_create_motorcycle(message: Message, state: FSMContext):
     await message.answer(
-        text="Супер! Давай начнем регистрацию твоего мотоцикла.\nНапиши мне его имя (например, Мустанг)",
+        text="Супер! Давай начнем добавление твоего мотоцикла в гараж.\nНапиши мне его имя (например, Мустанг)",
         reply_markup=None,
     )
 
-    await state.set_state(MotorcycleRegistration.name)
+    await state.set_state(MotorcycleCreate.name)
 
 
-@router.message(StateFilter(MotorcycleRegistration.name))
+@router.message(StateFilter(MotorcycleCreate.name))
 async def motorcycle_name_process(message: Message, state: FSMContext):
     name = message.text.strip()
     await state.update_data(name=name)
@@ -38,10 +38,10 @@ async def motorcycle_name_process(message: Message, state: FSMContext):
         reply_markup=None,
     )
 
-    await state.set_state(MotorcycleRegistration.brand)
+    await state.set_state(MotorcycleCreate.brand)
 
 
-@router.message(StateFilter(MotorcycleRegistration.brand))
+@router.message(StateFilter(MotorcycleCreate.brand))
 async def motorcycle_brand_process(message: Message, state: FSMContext):
     brand = message.text.strip()
     await state.update_data(brand=brand)
@@ -50,10 +50,10 @@ async def motorcycle_brand_process(message: Message, state: FSMContext):
         text="Отлично! Теперь напиши модель мотоцикла (например, Sportster)", reply_markup=None
     )
 
-    await state.set_state(MotorcycleRegistration.motorcycle_model)
+    await state.set_state(MotorcycleCreate.motorcycle_model)
 
 
-@router.message(StateFilter(MotorcycleRegistration.motorcycle_model))
+@router.message(StateFilter(MotorcycleCreate.motorcycle_model))
 async def motorcycle_model_process(message: Message, state: FSMContext):
     model = message.text.strip()
     await state.update_data(motorcycle_model=model)
@@ -62,10 +62,10 @@ async def motorcycle_model_process(message: Message, state: FSMContext):
         text="Хорошо! Теперь напиши тип двигателя (например, V-twin)", reply_markup=None
     )
 
-    await state.set_state(MotorcycleRegistration.engine)
+    await state.set_state(MotorcycleCreate.engine)
 
 
-@router.message(StateFilter(MotorcycleRegistration.engine))
+@router.message(StateFilter(MotorcycleCreate.engine))
 async def motorcycle_engine_process(message: Message, state: FSMContext):
     engine = message.text.strip()
     await state.update_data(engine=engine)
@@ -74,10 +74,10 @@ async def motorcycle_engine_process(message: Message, state: FSMContext):
         text="Отлично! Теперь напиши год выпуска мотоцикла (например, 2020)", reply_markup=None
     )
 
-    await state.set_state(MotorcycleRegistration.year)
+    await state.set_state(MotorcycleCreate.year)
 
 
-@router.message(StateFilter(MotorcycleRegistration.year))
+@router.message(StateFilter(MotorcycleCreate.year))
 async def motorcycle_year_process(
     message: Message, state: FSMContext, motorcycle_service: MotorcycleService
 ):
@@ -110,7 +110,7 @@ async def motorcycle_year_process(
         await motorcycle_service.create(motorcycle)
     except Exception as error:
         await message.answer(
-            text="Произошла ошибка при создании мотоцикла, пожалуйста, попробуйте позже",
+            text="Произошла ошибка при добавлении мотоцикла, пожалуйста, попробуйте позже",
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[
                     [
@@ -127,7 +127,7 @@ async def motorcycle_year_process(
         await state.clear()
 
     await message.answer(
-        text="Твой мотоцикл успешно зарегистрирован! Ты можешь увидеть его в своем гараже.",
+        text="Твой мотоцикл успешно добавлен! Ты можешь увидеть его в своем гараже.",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [

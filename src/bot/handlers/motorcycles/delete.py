@@ -22,4 +22,4 @@ async def delete_motorcycle_callback(
         log.error(f"Ошибка при удалении мотоцикла с ID {motorcycle_id}: {e}")
         return
     await callback.message.delete()
-    await callback.answer(text="Мотоцикл успещно удален!", show_alert=True)
+    await callback.answer(text="Мотоцикл успешно удален!", show_alert=True)

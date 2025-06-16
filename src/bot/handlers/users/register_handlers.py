@@ -1,7 +1,7 @@
 from aiogram import Dispatcher
 
 from .register import router as user_registration_router
-from .edit_user import router as edit_user_router
+from .edit import router as edit_user_router
 
 
 def register_handlers(dp: Dispatcher):

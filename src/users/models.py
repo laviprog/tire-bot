@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from src.motorcycles.models import MotorcycleModel
+    from src.applications.models import ApplicationModel
 
 
 class Role(str, Enum):
@@ -32,5 +33,9 @@ class UserModel(UUIDAuditBase):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     motorcycles: Mapped[list["MotorcycleModel"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    applications: Mapped[list["ApplicationModel"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan", lazy="selectin"
     )
