@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 from src import log
 from src.motorcycles import MotorcycleModel, MotorcycleService
@@ -22,7 +22,7 @@ class MotorcycleCreate(StatesGroup):
 async def start_create_motorcycle(message: Message, state: FSMContext):
     await message.answer(
         text="Супер! Давай начнем добавление твоего мотоцикла в гараж.\nНапиши мне его имя (например, Мустанг)",
-        reply_markup=None,
+        reply_markup=ReplyKeyboardRemove(),
     )
 
     await state.set_state(MotorcycleCreate.name)
@@ -35,7 +35,6 @@ async def motorcycle_name_process(message: Message, state: FSMContext):
 
     await message.answer(
         text="Классное имя! Теперь напиши марку мотоцикла (например, Harley-Davidson)",
-        reply_markup=None,
     )
 
     await state.set_state(MotorcycleCreate.brand)
@@ -118,7 +117,6 @@ async def motorcycle_year_process(
                     ]
                 ],
                 resize_keyboard=True,
-                one_time_keyboard=True,
             ),
         )
         log.error(f"Ошибка при создании мотоцикла: {error}")
@@ -136,6 +134,5 @@ async def motorcycle_year_process(
                 ]
             ],
             resize_keyboard=True,
-            one_time_keyboard=True,
         ),
     )
