@@ -74,4 +74,4 @@ async def process_phone_number(message: Message, state: FSMContext, user_service
     await user_service.update(user)
 
     await state.clear()
-    await profile_command(message, user_service, state)
+    await profile_command(message, user_service)
