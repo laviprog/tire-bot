@@ -9,8 +9,8 @@ from sqlalchemy import Enum as SQLAlchemyEnum, ForeignKey
 
 if TYPE_CHECKING:
     from src.users.models import UserModel
-    from src.motorcycles.models import MotorcycleModel # noqa
-    from src.promo_codes.models import PromoCodeModel # noqa
+    from src.motorcycles.models import MotorcycleModel  # noqa
+    from src.promo_codes.models import PromoCodeModel  # noqa
 
 
 class Type(str, Enum):

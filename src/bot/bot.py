@@ -19,7 +19,7 @@ async def run_bot():
         storage = RedisStorage(redis)
         dp = Dispatcher(storage=storage)
 
-        register_middlewares(dp, redis=redis, bot=bot)
+        register_middlewares(dp, redis=redis)
         register_handlers(dp)
 
         try:

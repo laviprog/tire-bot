@@ -11,7 +11,7 @@ services:
       - tire-bot-postgres
       - tire-bot-redis
     networks:
-      - tire-bot-postgres
+      - tire-bot-network
 
   tire-bot-postgres:
     image: postgres:15
@@ -23,7 +23,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     networks:
-      - tire-bot-postgres
+      - tire-bot-network
 
   tire-bot-redis:
     image: redis:latest
@@ -31,7 +31,8 @@ services:
     ports:
       - "127.0.0.1:6379:6379"
     networks:
-      - tire-bot-postgres
+      - tire-bot-network
 
 networks:
-  tire-bot-postgres:
+  tire-bot-network:
+    external: true
