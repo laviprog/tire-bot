@@ -1,10 +1,9 @@
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message
 
-from src.bot.handlers.command import profile_command
 from src.bot.utils import is_valid_phone_number
 from src.users import UserService, UserModel
 
@@ -16,14 +15,11 @@ class UserInfo(StatesGroup):
     phone_number = State()
 
 
-@router.message(F.text == "Создать профиль 📝")
-async def create_profile_strart(message: Message, state: FSMContext, user_service: UserService):
+async def create_profile_start(
+    message: Message, state: FSMContext, user_service: UserService, user_messages: dict
+):
     telegram_id = str(message.from_user.id)
     username = message.from_user.username
-
-    if await user_service.get_by_telegram_id(telegram_id):
-        await message.answer("Профиль уже существует.")
-        return
 
     await user_service.create(
         UserModel(
@@ -33,11 +29,17 @@ async def create_profile_strart(message: Message, state: FSMContext, user_servic
     )
 
     await state.set_state(UserInfo.name)
-    await message.answer("Как вас зовут?")
+    await message.answer(user_messages["register_name"])
 
 
 @router.message(StateFilter(UserInfo.name))
-async def process_name(message: Message, state: FSMContext, user_service: UserService):
+async def process_name(
+    message: Message,
+    state: FSMContext,
+    user_service: UserService,
+    user_messages: dict,
+    user_keyboards: dict,
+):
     name = message.text
     telegram_id = str(message.from_user.id)
 
@@ -46,25 +48,25 @@ async def process_name(message: Message, state: FSMContext, user_service: UserSe
     await user_service.update(user)
     await state.set_state(UserInfo.phone_number)
     await message.answer(
-        text="Поделитесь вашим номером телефона, нажав на кнопку ниже, или напишите его в обычном формате (например, 89017856745 или 79055943758)",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text="Отправить номер телефона", request_contact=True),
-                ]
-            ],
-            resize_keyboard=True,
-        ),
+        text=user_messages["register_phone_number"], reply_markup=user_keyboards["request_contact"]
     )
 
 
 @router.message(StateFilter(UserInfo.phone_number))
-async def process_phone_number(message: Message, state: FSMContext, user_service: UserService):
+async def process_phone_number(
+    message: Message,
+    state: FSMContext,
+    user_service: UserService,
+    user_messages: dict,
+    user_keyboards: dict,
+):
+    from src.bot.handlers.commands import profile_command
+
     phone_number = message.contact.phone_number if message.contact else message.text
     phone_number = phone_number.strip().replace(" ", "")
 
     if not is_valid_phone_number(phone_number):
-        await message.answer("Пожалуйста, введите корректный номер телефона.")
+        await message.answer(user_messages["not_valid_phone_number"])
         return
 
     telegram_id = str(message.from_user.id)
@@ -74,4 +76,8 @@ async def process_phone_number(message: Message, state: FSMContext, user_service
     await user_service.update(user)
 
     await state.clear()
-    await profile_command(message, user_service)
+    await profile_command(message, user_service, user_messages, user_keyboards)
+    await message.answer(
+        text=user_messages["back_to_start"],
+        reply_markup=user_keyboards["user_main_menu"],
+    )

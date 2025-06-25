@@ -1,0 +1,6 @@
+PROFILES = ["Мой профиль 👤"]
+BACK_TO_START = ["Вернуться в начало ⬅️"]
+LEAVE_UNCHANGED = ["Оставить без изменения"]
+ADD_MOTORCYCLE = ["Добавить мотоцикл ➕"]
+CHECK_MOTORCYCLE = ["Посмотреть мотоциклы 🏍️"]
+GARAGE = ["Мой гараж 🏍️"]

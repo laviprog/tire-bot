@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from aiogram import Router, F, Bot
+from aiogram import Router, Bot
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -9,7 +9,7 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, Callback
 
 from src import log
 from src.bot.handlers.utils import validate_datetime
-from src.promo_codes import DiscountType, PromoCodeService, PromoCodeModel
+from src.promo_codes import DiscountType, PromoCodeService
 
 router = Router()
 
@@ -116,7 +116,7 @@ async def discount_process(message: Message, state: FSMContext):
             if valid_from
             else "Сейчас промокод не имеет начала действия"
         )
-        + f"Укажи новое начало действия промокода (например, 30.07.2025 12:30 или 30.07.2025 (в таком случае промокод начнет действовать с начала дня)) или поставь -, если промокод не должен иметь начала действия, или оставь без изменений, нажав на кнопку ниже.",
+        + "Укажи новое начало действия промокода (например, 30.07.2025 12:30 или 30.07.2025 (в таком случае промокод начнет действовать с начала дня)) или поставь -, если промокод не должен иметь начала действия, или оставь без изменений, нажав на кнопку ниже.",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -157,7 +157,7 @@ async def valid_from_process(message: Message, state: FSMContext):
             if valid_until
             else "Сейчас промокод не имеет окончания действия"
         )
-        + f"Укажи новый конец действия промокода (например, 30.07.2025 12:30 или 30.07.2025 (в таком случае промокод начнет действовать с начала дня)) или поставь -, если промокод не должен иметь конца действия, или оставь без изменений, нажав на кнопку ниже.",
+        + "Укажи новый конец действия промокода (например, 30.07.2025 12:30 или 30.07.2025 (в таком случае промокод начнет действовать с начала дня)) или поставь -, если промокод не должен иметь конца действия, или оставь без изменений, нажав на кнопку ниже.",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -240,8 +240,12 @@ async def usage_limit_process(
                 "code": data.get("code"),
                 "discount_type": data.get("discount_type"),
                 "discount_value": data.get("discount_value"),
-                "valid_from": datetime.fromisoformat(data.get("valid_from")) if data.get("valid_from") else None,
-                "valid_until": datetime.fromisoformat(data.get("valid_until")) if data.get('valid_until') else None,
+                "valid_from": datetime.fromisoformat(data.get("valid_from"))
+                if data.get("valid_from")
+                else None,
+                "valid_until": datetime.fromisoformat(data.get("valid_until"))
+                if data.get("valid_until")
+                else None,
                 "usage_limit": data.get("usage_limit"),
             },
             item_id=UUID(data.get("id")),

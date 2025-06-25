@@ -6,7 +6,5 @@ router = Router()
 
 
 @router.message(StateFilter(None), ~F.text.startswith("/"))
-async def fallback_message(message: Message):
-    await message.answer(
-        "Упс! Я не понимаю, что ты имеешь в виду. Пожалуйста, используй команды или напиши /help для получения помощи."
-    )
+async def fallback_message(message: Message, user_messages: dict):
+    await message.answer(user_messages["fallback_message"])

@@ -14,11 +14,8 @@ class MotorcycleModel(UUIDAuditBase):
 
     __tablename__ = "motorcycles"
 
-    name: Mapped[str] = mapped_column(String(128))
     year: Mapped[int]
-    brand: Mapped[str] = mapped_column(String(50))
-    motorcycle_model: Mapped[str] = mapped_column(String(50))
-    engine: Mapped[str] = mapped_column(String(50))
+    motorcycle_model: Mapped[str] = mapped_column(String(128))
     user_telegram_id: Mapped[str] = mapped_column(ForeignKey("users.telegram_id"), nullable=False)
 
     owner: Mapped["UserModel"] = relationship(back_populates="motorcycles")

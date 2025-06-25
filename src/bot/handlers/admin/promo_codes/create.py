@@ -145,8 +145,12 @@ async def motorcycle_year_process(
         code=data.get("code"),
         discount_type=data.get("discount_type"),
         discount_value=data.get("discount_value"),
-        valid_from=datetime.fromisoformat(data.get("valid_from")) if data.get("valid_from") else None,
-        valid_until=datetime.fromisoformat(data.get("valid_until")) if data.get('valid_until') else None,
+        valid_from=datetime.fromisoformat(data.get("valid_from"))
+        if data.get("valid_from")
+        else None,
+        valid_until=datetime.fromisoformat(data.get("valid_until"))
+        if data.get("valid_until")
+        else None,
         usage_limit=usage_limit,
     )
     try:
