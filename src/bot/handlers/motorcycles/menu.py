@@ -3,26 +3,27 @@ from aiogram.types import (
     Message,
 )
 
-from src.bot.handlers.keyboards.utils import CHECK_MOTORCYCLE, GARAGE
+from src.bot.filters import Text
+from src.bot.handlers.keyboards import CHECK_MOTORCYCLE, GARAGE
 from src.motorcycles import MotorcycleService, MotorcycleModel
 
 router = Router()
 
 
-@router.message(*[F.text == text for text in GARAGE])
-async def garage_command(message: Message, user_messages: dict, user_keyboards: dict):
+@router.message(Text(GARAGE))
+async def garage_command(message: Message, messages: dict, keyboards: dict):
     await message.answer(
-        text=user_messages["garage"],
-        reply_markup=user_keyboards["garage"],
+        text=messages["garage"],
+        reply_markup=keyboards["garage"],
     )
 
 
-@router.message(*[F.text == text for text in CHECK_MOTORCYCLE])
+@router.message(Text(CHECK_MOTORCYCLE))
 async def view_motorcycles(
     message: Message,
     motorcycle_service: MotorcycleService,
-    user_messages: dict,
-    user_keyboards: dict,
+    messages: dict,
+    keyboards: dict,
 ):
     telegram_id = str(message.from_user.id)
 
@@ -30,12 +31,12 @@ async def view_motorcycles(
 
     if not motorcycles:
         await message.answer(
-            text=user_messages["garage_is_empty"],
+            text=messages["garage_is_empty"],
         )
         return
 
     for motorcycle in motorcycles:
         await message.answer(
-            text=user_messages["motorcycle"](motorcycle.motorcycle_model, motorcycle.year),
-            reply_markup=user_keyboards["motorcycle"](motorcycle.id),
+            text=messages["motorcycle"](motorcycle.motorcycle_model, motorcycle.year),
+            reply_markup=keyboards["motorcycle"](motorcycle.id),
         )

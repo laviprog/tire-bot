@@ -16,7 +16,7 @@ class UserInfo(StatesGroup):
 
 
 async def create_profile_start(
-    message: Message, state: FSMContext, user_service: UserService, user_messages: dict
+    message: Message, state: FSMContext, user_service: UserService, messages: dict
 ):
     telegram_id = str(message.from_user.id)
     username = message.from_user.username
@@ -29,7 +29,7 @@ async def create_profile_start(
     )
 
     await state.set_state(UserInfo.name)
-    await message.answer(user_messages["register_name"])
+    await message.answer(messages["register_name"])
 
 
 @router.message(StateFilter(UserInfo.name))
@@ -37,8 +37,8 @@ async def process_name(
     message: Message,
     state: FSMContext,
     user_service: UserService,
-    user_messages: dict,
-    user_keyboards: dict,
+    messages: dict,
+    keyboards: dict,
 ):
     name = message.text
     telegram_id = str(message.from_user.id)
@@ -48,7 +48,7 @@ async def process_name(
     await user_service.update(user)
     await state.set_state(UserInfo.phone_number)
     await message.answer(
-        text=user_messages["register_phone_number"], reply_markup=user_keyboards["request_contact"]
+        text=messages["register_phone_number"], reply_markup=keyboards["request_contact"]
     )
 
 
@@ -57,8 +57,8 @@ async def process_phone_number(
     message: Message,
     state: FSMContext,
     user_service: UserService,
-    user_messages: dict,
-    user_keyboards: dict,
+    messages: dict,
+    keyboards: dict,
 ):
     from src.bot.handlers.commands import profile_command
 
@@ -66,7 +66,7 @@ async def process_phone_number(
     phone_number = phone_number.strip().replace(" ", "")
 
     if not is_valid_phone_number(phone_number):
-        await message.answer(user_messages["not_valid_phone_number"])
+        await message.answer(messages["not_valid_phone_number"])
         return
 
     telegram_id = str(message.from_user.id)
@@ -76,8 +76,8 @@ async def process_phone_number(
     await user_service.update(user)
 
     await state.clear()
-    await profile_command(message, user_service, user_messages, user_keyboards)
+    await profile_command(message, user_service, messages, keyboards)
     await message.answer(
-        text=user_messages["back_to_start"],
-        reply_markup=user_keyboards["user_main_menu"],
+        text=messages["back_to_start"],
+        reply_markup=keyboards["user_main_menu"],
     )

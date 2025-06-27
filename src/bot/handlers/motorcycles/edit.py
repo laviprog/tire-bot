@@ -8,7 +8,7 @@ from aiogram.types import CallbackQuery, Message
 
 from src import log
 from src.bot.handlers.back import back_to_start
-from src.bot.handlers.keyboards.utils import LEAVE_UNCHANGED
+from src.bot.handlers.keyboards import LEAVE_UNCHANGED
 from src.motorcycles import MotorcycleService
 from src.users import UserService
 
@@ -26,15 +26,15 @@ async def edit_motorcycle_callback(
     bot: Bot,
     state: FSMContext,
     motorcycle_service: MotorcycleService,
-    user_messages: dict,
-    user_keyboards: dict,
+    messages: dict,
+    keyboards: dict,
 ):
     motorcycle_id = callback.data.split(":")[1]
 
     try:
         motorcycle = await motorcycle_service.get(motorcycle_id)
     except Exception as e:
-        await callback.answer(text=user_messages["motorcycle_not_found_error"], show_alert=True)
+        await callback.answer(text=messages["motorcycle_not_found_error"], show_alert=True)
         log.error(f"Ошибка при получении мотоцикла с ID {motorcycle_id}: {e}")
         return
 
@@ -47,14 +47,14 @@ async def edit_motorcycle_callback(
     await callback.message.delete()
     await bot.send_message(
         chat_id=callback.message.chat.id,
-        text=user_messages["edit_motorcycle_model_process"](motorcycle.motorcycle_model),
-        reply_markup=user_keyboards["leave_unchanged"],
+        text=messages["edit_motorcycle_model_process"](motorcycle.motorcycle_model),
+        reply_markup=keyboards["leave_unchanged"],
     )
 
 
 @router.message(StateFilter(MotorcycleUpdate.motorcycle_model))
 async def motorcycle_update_model_process(
-    message: Message, state: FSMContext, user_messages: dict, user_keyboards: dict
+    message: Message, state: FSMContext, messages: dict, keyboards: dict
 ):
     model = message.text.strip()
 
@@ -66,8 +66,8 @@ async def motorcycle_update_model_process(
 
     await state.set_state(MotorcycleUpdate.year)
     await message.answer(
-        text=user_messages["edit_motorcycle_year_process"](motorcycle_year),
-        reply_markup=user_keyboards["leave_unchanged"],
+        text=messages["edit_motorcycle_year_process"](motorcycle_year),
+        reply_markup=keyboards["leave_unchanged"],
     )
 
 
@@ -77,10 +77,8 @@ async def motorcycle_update_year_process(
     state: FSMContext,
     user_service: UserService,
     motorcycle_service: MotorcycleService,
-    user_messages: dict,
-    user_keyboards: dict,
-    admin_keyboards: dict,
-    worker_keyboards: dict,
+    messages: dict,
+    keyboards: dict,
 ):
     year = message.text.strip()
 
@@ -89,13 +87,13 @@ async def motorcycle_update_year_process(
             year = int(message.text.strip())
         except ValueError:
             await message.answer(
-                text=user_messages["not_valid_year"],
+                text=messages["not_valid_year"],
             )
             return
 
         if year < 1930 or year > 2025:
             await message.answer(
-                text=user_messages["not_valid_year"],
+                text=messages["not_valid_year"],
             )
             return
 
@@ -117,21 +115,22 @@ async def motorcycle_update_year_process(
         )
     except Exception as error:
         await message.answer(
-            text=user_messages["edit_motorcycle_error"],
+            text=messages["edit_motorcycle_error"],
         )
-        await back_to_start(
-            message, user_service, user_messages, user_keyboards, admin_keyboards, worker_keyboards
-        )
+        await back_to_start(message, user_service, messages, keyboards)
         log.error(f"Ошибка при обновлении мотоцикла: {error}")
         return
     finally:
         await state.clear()
 
     await message.answer(
-        text=user_messages["motorcycle"](motorcycle_model, motorcycle_year),
-        reply_markup=user_keyboards["motorcycle"](motorcycle_id),
+        text=messages["motorcycle"](motorcycle_model, motorcycle_year),
+        reply_markup=keyboards["motorcycle"](motorcycle_id),
     )
 
     await back_to_start(
-        message, user_service, user_messages, user_keyboards, admin_keyboards, worker_keyboards
+        message,
+        user_service,
+        messages,
+        keyboards,
     )

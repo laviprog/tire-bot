@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery
 
 from src import log
 from src.bot.handlers.back import back_to_start
-from src.bot.handlers.keyboards.utils import LEAVE_UNCHANGED
+from src.bot.handlers.keyboards import LEAVE_UNCHANGED
 from src.bot.utils import is_valid_phone_number
 from src.users import UserService
 
@@ -26,15 +26,15 @@ async def edit_user_callback(
     bot: Bot,
     state: FSMContext,
     user_service: UserService,
-    user_messages: dict,
-    user_keyboards: dict,
+    messages: dict,
+    keyboards: dict,
 ):
     user_id = callback.data.split(":")[1]
 
     try:
         user = await user_service.get(user_id)
     except Exception as e:
-        await callback.answer(text=user_messages["could_not_find_user"], show_alert=True)
+        await callback.answer(text=messages["could_not_find_user"], show_alert=True)
         log.error(f"Ошибка при получении пользователя {user_id}: {e}")
         return
 
@@ -48,15 +48,13 @@ async def edit_user_callback(
 
     await bot.send_message(
         chat_id=callback.message.chat.id,
-        text=user_messages["edit_name_process"](user.name),
-        reply_markup=user_keyboards["leave_unchanged"],
+        text=messages["edit_name_process"](user.name),
+        reply_markup=keyboards["leave_unchanged"],
     )
 
 
 @router.message(StateFilter(UserUpdate.name))
-async def update_name(
-    message: Message, state: FSMContext, user_messages: dict, user_keyboards: dict
-):
+async def update_name(message: Message, state: FSMContext, messages: dict, keyboards: dict):
     name = message.text.strip()
 
     if name not in LEAVE_UNCHANGED:
@@ -68,8 +66,8 @@ async def update_name(
     await state.set_state(UserUpdate.phone_number)
 
     await message.answer(
-        text=user_messages["edit_phone_number_process"](phone_number),
-        reply_markup=user_keyboards["leave_unchanged_with_request_contact"],
+        text=messages["edit_phone_number_process"](phone_number),
+        reply_markup=keyboards["leave_unchanged_with_request_contact"],
     )
 
 
@@ -78,10 +76,8 @@ async def update_phone_number(
     message: Message,
     state: FSMContext,
     user_service: UserService,
-    user_messages: dict,
-    user_keyboards: dict,
-    admin_keyboards: dict,
-    worker_keyboards: dict,
+    messages: dict,
+    keyboards: dict,
 ):
     if message.text not in LEAVE_UNCHANGED:
         if message.contact:
@@ -90,7 +86,7 @@ async def update_phone_number(
             phone_number = message.text.strip()
 
         if not is_valid_phone_number(phone_number):
-            await message.answer(text=user_messages["not_valid_phone_number"])
+            await message.answer(text=messages["not_valid_phone_number"])
             return
 
         await state.update_data(phone_number=phone_number)
@@ -111,7 +107,7 @@ async def update_phone_number(
         )
     except Exception as error:
         await message.answer(
-            text=user_messages["error_user_update"], reply_markup=user_keyboards["user_main_menu"]
+            text=messages["error_user_update"], reply_markup=keyboards["user_main_menu"]
         )
         log.error(f"Ошибка при обновлении пользователя: {error}")
         return
@@ -119,10 +115,8 @@ async def update_phone_number(
         await state.clear()
 
     await message.answer(
-        text=user_messages["profile"](name, phone_number),
-        reply_markup=user_keyboards["profile"](user_id),
+        text=messages["profile"](name, phone_number),
+        reply_markup=keyboards["profile"](user_id),
     )
 
-    await back_to_start(
-        message, user_service, user_messages, user_keyboards, admin_keyboards, worker_keyboards
-    )
+    await back_to_start(message, user_service, messages, keyboards)

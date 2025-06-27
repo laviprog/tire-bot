@@ -6,5 +6,5 @@ router = Router()
 
 
 @router.message(StateFilter(None), ~F.text.startswith("/"))
-async def fallback_message(message: Message, user_messages: dict):
-    await message.answer(user_messages["fallback_message"])
+async def fallback_message(message: Message, messages: dict):
+    await message.answer(messages["fallback_message"])

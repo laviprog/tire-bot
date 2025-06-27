@@ -5,7 +5,16 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 
-USER_KEYBOARDS = {
+PROFILES = ["Мой профиль 👤"]
+BACK_TO_START = ["Вернуться в начало ⬅️"]
+LEAVE_UNCHANGED = ["Оставить без изменения"]
+SKIP = ["Пропустить"]
+ADD_MOTORCYCLE = ["Добавить мотоцикл ➕"]
+CREATE_APPLICATION_SERVICE = ["Записаться в сервис 🛠️"]
+CHECK_MOTORCYCLE = ["Посмотреть мотоциклы 🏍️"]
+GARAGE = ["Мой гараж 🏍️"]
+
+KEYBOARDS = {
     "ru": {
         "user_main_menu": ReplyKeyboardMarkup(
             keyboard=[
@@ -16,6 +25,27 @@ USER_KEYBOARDS = {
                 [
                     KeyboardButton(text="Мой гараж 🏍️"),
                     KeyboardButton(text="Мой профиль 👤"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "admin_main_menu": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Заявки 📋"),
+                    KeyboardButton(text="Мастера 🛠️"),
+                ],
+                [
+                    KeyboardButton(text="Промокоды 💳"),
+                    KeyboardButton(text="Пользователи 👥"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "worker_main_menu": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Пока ничего нет"),
                 ],
             ],
             resize_keyboard=True,
@@ -55,6 +85,15 @@ USER_KEYBOARDS = {
             keyboard=[
                 [
                     KeyboardButton(text="Оставить без изменения"),
+                ]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        ),
+        "skip_step": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Пропустить"),
                 ]
             ],
             resize_keyboard=True,
