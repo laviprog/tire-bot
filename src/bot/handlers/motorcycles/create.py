@@ -2,137 +2,88 @@ from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import Message, ReplyKeyboardRemove
 
 from src import log
+from src.bot.filters import Text
+from src.bot.handlers.back import back_to_start
+from src.bot.handlers.keyboards import ADD_MOTORCYCLE
 from src.motorcycles import MotorcycleModel, MotorcycleService
+from src.users import UserService
 
 router = Router()
 
 
 class MotorcycleCreate(StatesGroup):
-    name = State()
-    brand = State()
     motorcycle_model = State()
-    engine = State()
     year = State()
 
 
-@router.message(F.text == "Добавить мотоцикл ➕")
-async def start_create_motorcycle(message: Message, state: FSMContext):
+@router.message(Text(ADD_MOTORCYCLE))
+async def start_create_motorcycle(message: Message, state: FSMContext, messages: dict):
     await message.answer(
-        text="Супер! Давай начнем добавление твоего мотоцикла в гараж.\nНапиши мне его имя (например, Мустанг)",
+        text=messages["add_motorcycle_model_process"],
         reply_markup=ReplyKeyboardRemove(),
-    )
-
-    await state.set_state(MotorcycleCreate.name)
-
-
-@router.message(StateFilter(MotorcycleCreate.name))
-async def motorcycle_name_process(message: Message, state: FSMContext):
-    name = message.text.strip()
-    await state.update_data(name=name)
-
-    await message.answer(
-        text="Классное имя! Теперь напиши марку мотоцикла (например, Harley-Davidson)",
-    )
-
-    await state.set_state(MotorcycleCreate.brand)
-
-
-@router.message(StateFilter(MotorcycleCreate.brand))
-async def motorcycle_brand_process(message: Message, state: FSMContext):
-    brand = message.text.strip()
-    await state.update_data(brand=brand)
-
-    await message.answer(
-        text="Отлично! Теперь напиши модель мотоцикла (например, Sportster)", reply_markup=None
     )
 
     await state.set_state(MotorcycleCreate.motorcycle_model)
 
 
 @router.message(StateFilter(MotorcycleCreate.motorcycle_model))
-async def motorcycle_model_process(message: Message, state: FSMContext):
+async def motorcycle_model_process(message: Message, state: FSMContext, messages: dict):
     model = message.text.strip()
     await state.update_data(motorcycle_model=model)
 
-    await message.answer(
-        text="Хорошо! Теперь напиши тип двигателя (например, V-twin)", reply_markup=None
-    )
-
-    await state.set_state(MotorcycleCreate.engine)
-
-
-@router.message(StateFilter(MotorcycleCreate.engine))
-async def motorcycle_engine_process(message: Message, state: FSMContext):
-    engine = message.text.strip()
-    await state.update_data(engine=engine)
-
-    await message.answer(
-        text="Отлично! Теперь напиши год выпуска мотоцикла (например, 2020)", reply_markup=None
-    )
+    await message.answer(text=messages["add_motorcycle_year_process"])
 
     await state.set_state(MotorcycleCreate.year)
 
 
 @router.message(StateFilter(MotorcycleCreate.year))
 async def motorcycle_year_process(
-    message: Message, state: FSMContext, motorcycle_service: MotorcycleService
+    message: Message,
+    state: FSMContext,
+    user_service: UserService,
+    motorcycle_service: MotorcycleService,
+    messages: dict,
+    keyboards: dict,
 ):
     try:
         year = int(message.text.strip())
     except ValueError:
-        await message.answer(
-            text="Пожалуйста, введи корректный год выпуска (например, 2020).", reply_markup=None
-        )
+        await message.answer(text=messages["not_valid_year"])
         return
 
     if year < 1930 or year > 2025:
         await message.answer(
-            text="Пожалуйста, убедись, что ты ввел корректный год выпуска (например, 2020).",
-            reply_markup=None,
+            text=messages["not_valid_year"],
         )
         return
 
     data = await state.get_data()
 
+    motorcycle_model = data["motorcycle_model"]
+
     motorcycle = MotorcycleModel(
         user_telegram_id=str(message.from_user.id),
-        name=data["name"],
-        brand=data["brand"],
-        motorcycle_model=data["motorcycle_model"],
-        engine=data["engine"],
+        motorcycle_model=motorcycle_model,
         year=year,
     )
     try:
-        await motorcycle_service.create(motorcycle)
+        motorcycle = await motorcycle_service.create(motorcycle)
     except Exception as error:
         await message.answer(
-            text="Произошла ошибка при добавлении мотоцикла, пожалуйста, попробуйте позже",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=[
-                    [
-                        KeyboardButton(text="Вернуться в начало ⬅️"),
-                    ]
-                ],
-                resize_keyboard=True,
-            ),
+            text=messages["add_motorcycle_error"],
         )
+        await back_to_start(message, user_service, messages, keyboards)
         log.error(f"Ошибка при создании мотоцикла: {error}")
         return
     finally:
         await state.clear()
 
     await message.answer(
-        text="Твой мотоцикл успешно добавлен! Ты можешь увидеть его в своем гараже.",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text="Мой гараж 🏍️"),
-                    KeyboardButton(text="Вернуться в начало ⬅️"),
-                ]
-            ],
-            resize_keyboard=True,
-        ),
+        text=messages["motorcycle"](motorcycle_model, year),
+        reply_markup=keyboards["motorcycle"](motorcycle.id),
     )
+
+    await back_to_start(message, user_service, messages, keyboards)

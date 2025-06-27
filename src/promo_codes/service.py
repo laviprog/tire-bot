@@ -15,6 +15,17 @@ class PromoCodeService(SQLAlchemyAsyncRepositoryService[PromoCodeModel, PromoCod
         kwargs.setdefault("auto_commit", True)
         super().__init__(session=session, **kwargs)
 
+    async def check_code(self, promo_code: str) -> str | None:
+        """
+        Check promo code in db, if promo code exists, then return id, else return None
+        :param promo_code: promo code that check in db
+        :return: ID or None
+        """
+        promo_code = await self.get_one_or_none(PromoCodeModel.code == promo_code.strip().lower())
+        if promo_code:
+            return str(promo_code.id)
+        return None
+
     async def mark_as_used(self, promo_code: str) -> None:
         """
         Mark the promo code as used.
