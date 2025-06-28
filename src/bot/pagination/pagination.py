@@ -2,4 +2,8 @@ from aiogram.filters.callback_data import CallbackData
 
 
 class DatePagination(CallbackData, prefix="date"):
-    day: int
+    date: str
+
+
+class TimePagination(CallbackData, prefix="time"):
+    date: str

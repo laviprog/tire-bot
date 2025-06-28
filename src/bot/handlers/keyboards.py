@@ -73,6 +73,18 @@ KEYBOARDS = {
             ],
             resize_keyboard=True,
         ),
+        "application": lambda application_id: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Изменить", callback_data=f"edit_application:{application_id}"
+                    ),
+                    InlineKeyboardButton(
+                        text="Отменить", callback_data=f"canceled_application:{application_id}"
+                    ),
+                ]
+            ]
+        ),
         "request_contact": ReplyKeyboardMarkup(
             keyboard=[
                 [
