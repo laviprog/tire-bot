@@ -81,7 +81,7 @@ KEYBOARDS = {
                     ),
                     InlineKeyboardButton(
                         text="Отменить", callback_data=f"canceled_application:{application_id}"
-                    )
+                    ),
                 ]
             ]
         ),

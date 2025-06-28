@@ -51,7 +51,10 @@ MESSAGES = {
         "create_application_error": "Произошла ошибка при создании заявки, попробуйте позже",
         "skip_date": "Выберите конкретное время",
         "old_date": "Данное время уже в прошлом)",
-        "application": lambda motorcycle_model, description, service_datetime, status: f"<b>Заявка в сервисный центр</b>\n\nМотоцикл: {motorcycle_model}\nОписание: {description}\nВремя: {service_datetime.strftime('%d-%m-%Y %H:%M')}\nСтатус: {status}"
+        "application": lambda motorcycle_model,
+        description,
+        service_datetime,
+        status: f"<b>Заявка в сервисный центр</b>\n\nМотоцикл: {motorcycle_model}\nОписание: {description}\nВремя: {service_datetime.strftime('%d-%m-%Y %H:%M')}\nСтатус: {status}",
     },
     # "en": {...},
 }

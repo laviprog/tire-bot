@@ -10,7 +10,8 @@ from aiogram.types import (
     ReplyKeyboardRemove,
     CallbackQuery,
     InlineKeyboardButton,
-    InlineKeyboardMarkup, InputFile,
+    InlineKeyboardMarkup,
+    InputFile,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from babel.dates import format_date
@@ -60,26 +61,29 @@ async def start_create_application_service(
         )
 
     await message.answer(
-        text=messages["choose_motorcycle_for_application_service"],
-        reply_markup=builder.as_markup()
+        text=messages["choose_motorcycle_for_application_service"], reply_markup=builder.as_markup()
     )
 
 
 @router.callback_query(
-    lambda callback_name: callback_name.data.startswith(
-        "motorcycle_for_application:"
-    )
+    lambda callback_name: callback_name.data.startswith("motorcycle_for_application:")
 )
 async def choose_motorcycle_process(
-    callback: CallbackQuery, messages: dict, state: FSMContext, motorcycle_service: MotorcycleService
+    callback: CallbackQuery,
+    messages: dict,
+    state: FSMContext,
+    motorcycle_service: MotorcycleService,
 ):
     motorcycle_id = callback.data.split(":")[1]
     motorcycle = await motorcycle_service.get(UUID(motorcycle_id))
-    await state.update_data(motorcycle_id=motorcycle_id, motorcycle_model=motorcycle.motorcycle_model)
+    await state.update_data(
+        motorcycle_id=motorcycle_id, motorcycle_model=motorcycle.motorcycle_model
+    )
     await callback.message.edit_text(
         text=messages["choose_date_for_application_service"],
         reply_markup=await get_date_paginated_kb(datetime.today().replace(day=1)),
     )
+
 
 async def get_time_slots(
     application_service: ApplicationService,
@@ -87,16 +91,18 @@ async def get_time_slots(
     start_hours: int = 9,
     end_hours: int = 19,
     max_record: int = 10,
-    interval_minutes: int = 30
+    interval_minutes: int = 30,
 ) -> list[str]:
     start_day = datetime.today() + timedelta(days=day)
     start_day = start_day.replace(tzinfo=timezone.utc)
-    end_day = start_day.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
+    end_day = start_day.replace(
+        hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc
+    )
 
     applications = await application_service.list(
         *[
             ApplicationModel.service_datetime >= start_day,
-            ApplicationModel.service_datetime <= end_day
+            ApplicationModel.service_datetime <= end_day,
         ]
     )
 
@@ -128,20 +134,25 @@ async def get_date_paginated_kb(date: datetime) -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(
             text="⬅️" if page_date.month > today.month else " ",
-            callback_data=DatePagination(date=page_date.replace(month=page_date.month - 1).strftime("%m-%Y")).pack() if page_date.month > today.month else "skip_date",
+            callback_data=DatePagination(
+                date=page_date.replace(month=page_date.month - 1).strftime("%m-%Y")
+            ).pack()
+            if page_date.month > today.month
+            else "skip_date",
         ),
-        InlineKeyboardButton(
-            text=formatted,
-            callback_data="skip_date"
-        ),
+        InlineKeyboardButton(text=formatted, callback_data="skip_date"),
         InlineKeyboardButton(
             text="➡️",
-            callback_data=DatePagination(date=page_date.replace(month=page_date.month + 1).strftime("%m-%Y")).pack(),
+            callback_data=DatePagination(
+                date=page_date.replace(month=page_date.month + 1).strftime("%m-%Y")
+            ).pack(),
         ),
     )
 
     WEEKDAYS_SHORT_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-    builder.row(*[InlineKeyboardButton(text=wd, callback_data='skip_date') for wd in WEEKDAYS_SHORT_RU])
+    builder.row(
+        *[InlineKeyboardButton(text=wd, callback_data="skip_date") for wd in WEEKDAYS_SHORT_RU]
+    )
 
     date = page_date
     buttons_row = []
@@ -156,7 +167,7 @@ async def get_date_paginated_kb(date: datetime) -> InlineKeyboardMarkup:
             buttons_row.append(
                 InlineKeyboardButton(
                     text=f"{date.day}",
-                    callback_data='old_date',
+                    callback_data="old_date",
                 )
             )
         else:
@@ -181,7 +192,9 @@ async def get_date_paginated_kb(date: datetime) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-async def get_time_paginated_kb(application_service: ApplicationService, date: datetime) -> InlineKeyboardMarkup:
+async def get_time_paginated_kb(
+    application_service: ApplicationService, date: datetime
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     day = date.day
 
@@ -190,12 +203,18 @@ async def get_time_paginated_kb(application_service: ApplicationService, date: d
     builder.row(
         InlineKeyboardButton(
             text="⬅️" if day > 0 else " ",
-            callback_data=TimePagination(date=(date - timedelta(days=1)).strftime("%d-%m-%Y")).pack() if day > 0 else "skip_date",
+            callback_data=TimePagination(
+                date=(date - timedelta(days=1)).strftime("%d-%m-%Y")
+            ).pack()
+            if day > 0
+            else "skip_date",
         ),
         InlineKeyboardButton(text=date.strftime("%d-%m-%Y"), callback_data="skip_date"),
         InlineKeyboardButton(
             text="➡️",
-            callback_data=TimePagination(date=(date + timedelta(days=1)).strftime("%d-%m-%Y")).pack(),
+            callback_data=TimePagination(
+                date=(date + timedelta(days=1)).strftime("%d-%m-%Y")
+            ).pack(),
         ),
     )
     buttons_row = []
@@ -204,7 +223,12 @@ async def get_time_paginated_kb(application_service: ApplicationService, date: d
         if i % 4 == 0 and i != 0:
             builder.row(*buttons_row)
             buttons_row = []
-        buttons_row.append(InlineKeyboardButton(text=slot.replace('-', ':'), callback_data=f"time_for_application:{date.strftime('%d-%m-%Y') + ' ' + slot}"))
+        buttons_row.append(
+            InlineKeyboardButton(
+                text=slot.replace("-", ":"),
+                callback_data=f"time_for_application:{date.strftime('%d-%m-%Y') + ' ' + slot}",
+            )
+        )
 
     if buttons_row:
         builder.row(*buttons_row)
@@ -227,8 +251,11 @@ async def date_pagination_callback(callback: CallbackQuery, callback_data: DateP
         reply_markup=await get_date_paginated_kb(date=datetime.strptime(date, "%m-%Y"))
     )
 
+
 @router.callback_query(TimePagination.filter())
-async def time_pagination_callback(callback: CallbackQuery, callback_data: TimePagination, application_service: ApplicationService):
+async def time_pagination_callback(
+    callback: CallbackQuery, callback_data: TimePagination, application_service: ApplicationService
+):
     date = datetime.strptime(callback_data.date, "%d-%m-%Y")
 
     await callback.message.edit_reply_markup(
@@ -236,35 +263,17 @@ async def time_pagination_callback(callback: CallbackQuery, callback_data: TimeP
     )
 
 
-@router.callback_query(
-    lambda callback_name: callback_name.data.startswith(
-        "skip_date"
-    )
-)
+@router.callback_query(lambda callback_name: callback_name.data.startswith("skip_date"))
 async def skip_date(callback: CallbackQuery, messages: dict):
-    await callback.answer(
-        text=messages["skip_date"],
-        show_alert=True
-    )
+    await callback.answer(text=messages["skip_date"], show_alert=True)
 
 
-@router.callback_query(
-    lambda callback_name: callback_name.data.startswith(
-        "old_date"
-    )
-)
+@router.callback_query(lambda callback_name: callback_name.data.startswith("old_date"))
 async def old_date(callback: CallbackQuery, messages: dict):
-    await callback.answer(
-        text=messages["old_date"],
-        show_alert=True
-    )
+    await callback.answer(text=messages["old_date"], show_alert=True)
 
 
-@router.callback_query(
-    lambda callback_name: callback_name.data.startswith(
-        "date_for_application:"
-    )
-)
+@router.callback_query(lambda callback_name: callback_name.data.startswith("date_for_application:"))
 async def choose_date_process(
     callback: CallbackQuery, messages: dict, application_service: ApplicationService
 ):
@@ -274,14 +283,9 @@ async def choose_date_process(
         reply_markup=await get_time_paginated_kb(application_service, date=date),
     )
 
-@router.callback_query(
-    lambda callback_name: callback_name.data.startswith(
-        "time_for_application:"
-    )
-)
-async def choose_time_process(
-    callback: CallbackQuery, messages: dict, state: FSMContext
-):
+
+@router.callback_query(lambda callback_name: callback_name.data.startswith("time_for_application:"))
+async def choose_time_process(callback: CallbackQuery, messages: dict, state: FSMContext):
     selected_datetime = callback.data.split(":")[1]
 
     await state.update_data(datetime=selected_datetime)
@@ -309,6 +313,7 @@ async def description_process(
         reply_markup=keyboards["skip_step"],
     )
 
+
 @router.message(StateFilter(ApplicationServiceCreate.media_id))
 async def media_process(
     message: Message,
@@ -319,7 +324,10 @@ async def media_process(
     if message.content_type == "text":
         if message.text.strip() in SKIP:
             await state.set_state(ApplicationServiceCreate.promo_code_id)
-            await message.answer(text=messages["promo_code_for_application_service"], reply_markup=keyboards['skip_step'])
+            await message.answer(
+                text=messages["promo_code_for_application_service"],
+                reply_markup=keyboards["skip_step"],
+            )
             return
 
     media_id = None
@@ -331,11 +339,16 @@ async def media_process(
         await state.update_data(video_id=media_id)
 
     if not media_id:
-        await message.answer(text=messages["media_for_application_service_not_valid"], reply_markup=keyboards['skip_step'])
+        await message.answer(
+            text=messages["media_for_application_service_not_valid"],
+            reply_markup=keyboards["skip_step"],
+        )
         return
 
     await state.set_state(ApplicationServiceCreate.promo_code_id)
-    await message.answer(text=messages["promo_code_for_application_service"], reply_markup=keyboards['skip_step'])
+    await message.answer(
+        text=messages["promo_code_for_application_service"], reply_markup=keyboards["skip_step"]
+    )
 
 
 @router.message(StateFilter(ApplicationServiceCreate.promo_code_id))
@@ -347,14 +360,16 @@ async def promo_code_process(
     user_service: UserService,
     messages: dict,
     keyboards: dict,
-    bot: Bot
+    bot: Bot,
 ):
     promo_code = message.text.strip()
     if promo_code not in SKIP:
         if promo_code_id := await promo_code_service.check_code(promo_code):
             await state.update_data(promo_code_id=promo_code_id)
         else:
-            await message.answer(text=messages["not_found_promo_code"], reply_markup=keyboards["skip_step"])
+            await message.answer(
+                text=messages["not_found_promo_code"], reply_markup=keyboards["skip_step"]
+            )
             return
 
     data = await state.get_data()
@@ -385,7 +400,12 @@ async def promo_code_process(
     if data.get("photo_id", None):
         await message.answer_photo(
             photo=data.get("photo_id"),
-            caption=messages["application"](motorcycle_model=data.get("motorcycle_model"), description=data.get("description"), service_datetime=service_dt, status=application.status.value),
+            caption=messages["application"](
+                motorcycle_model=data.get("motorcycle_model"),
+                description=data.get("description"),
+                service_datetime=service_dt,
+                status=application.status.value,
+            ),
             reply_markup=keyboards["application"](application.id),
         )
 
@@ -402,7 +422,12 @@ async def promo_code_process(
         )
     else:
         await message.answer(
-            text=messages["application"](motorcycle_model=data.get("motorcycle_model"), description=data.get("description"), service_datetime=service_dt, status=application.status.value),
+            text=messages["application"](
+                motorcycle_model=data.get("motorcycle_model"),
+                description=data.get("description"),
+                service_datetime=service_dt,
+                status=application.status.value,
+            ),
             reply_markup=keyboards["application"](application.id),
         )
 
