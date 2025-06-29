@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from aiogram import Router, Bot
+from aiogram import Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -11,16 +11,19 @@ from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    InputFile,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from babel.dates import format_date
 
 from src import log
-from src.applications import ApplicationService, ApplicationModel
+from src.applications import ApplicationService, ApplicationModel, Type
 from src.bot.filters import Text
 from src.bot.handlers.back import back_to_start
-from src.bot.handlers.keyboards import CREATE_APPLICATION_SERVICE, SKIP
+from src.bot.handlers.keyboards import (
+    CREATE_APPLICATION_SERVICE,
+    SKIP,
+    CREATE_APPLICATION_EVACUATION,
+)
 from src.bot.pagination import DatePagination
 from src.bot.pagination.pagination import TimePagination
 from src.motorcycles import MotorcycleModel, MotorcycleService
@@ -32,22 +35,70 @@ router = Router()
 
 class ApplicationServiceCreate(StatesGroup):
     motorcycle_id = State()
+    motorcycle_model = State()
+    motorcycle_year = State()
     service_datetime = State()
     description = State()
     media_id = State()
     promo_code_id = State()
 
 
-@router.message(Text(CREATE_APPLICATION_SERVICE))
-async def start_create_application_service(
+class ApplicationEvacuationCreate(StatesGroup):
+    motorcycle_id = State()
+    motorcycle_model = State()
+    motorcycle_year = State()
+    description = State()
+    location = State()
+
+
+@router.message(Text(CREATE_APPLICATION_EVACUATION))
+async def start_create_application_evacuation(
     message: Message,
     messages: dict,
+    state: FSMContext,
     motorcycle_service: MotorcycleService,
 ):
     telegram_id = str(message.from_user.id)
     motorcycles = await motorcycle_service.list(MotorcycleModel.user_telegram_id == telegram_id)
     if not motorcycles:
-        await message.answer(text=messages["no_motorcycles_for_application_service"])
+        await state.set_state(ApplicationEvacuationCreate.motorcycle_model)
+        await message.answer(
+            text=messages["add_motorcycle_model_process"],
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    builder = InlineKeyboardBuilder()
+
+    for motorcycle in motorcycles:
+        builder.row(
+            InlineKeyboardButton(
+                text=str(motorcycle.motorcycle_model),
+                callback_data=f"motorcycle_for_evacuation:{str(motorcycle.id)}",
+            )
+        )
+
+    await message.answer(
+        text=messages["choose_motorcycle_for_application_evacuation"],
+        reply_markup=builder.as_markup(),
+    )
+
+
+@router.message(Text(CREATE_APPLICATION_SERVICE))
+async def start_create_application_service(
+    message: Message,
+    messages: dict,
+    state: FSMContext,
+    motorcycle_service: MotorcycleService,
+):
+    telegram_id = str(message.from_user.id)
+    motorcycles = await motorcycle_service.list(MotorcycleModel.user_telegram_id == telegram_id)
+    if not motorcycles:
+        await state.set_state(ApplicationServiceCreate.motorcycle_model)
+        await message.answer(
+            text=messages["add_motorcycle_model_process"],
+            reply_markup=ReplyKeyboardRemove(),
+        )
         return
 
     builder = InlineKeyboardBuilder()
@@ -62,6 +113,193 @@ async def start_create_application_service(
 
     await message.answer(
         text=messages["choose_motorcycle_for_application_service"], reply_markup=builder.as_markup()
+    )
+
+
+@router.message(StateFilter(ApplicationServiceCreate.motorcycle_model))
+async def motorcycle_model_process(message: Message, state: FSMContext, messages: dict):
+    model = message.text.strip()
+    await state.update_data(motorcycle_model=model)
+
+    await message.answer(text=messages["add_motorcycle_year_process"])
+
+    await state.set_state(ApplicationServiceCreate.motorcycle_year)
+
+
+@router.message(StateFilter(ApplicationEvacuationCreate.motorcycle_model))
+async def motorcycle_model_process_evacuation(message: Message, state: FSMContext, messages: dict):
+    model = message.text.strip()
+    await state.update_data(motorcycle_model=model)
+
+    await message.answer(text=messages["add_motorcycle_year_process"])
+
+    await state.set_state(ApplicationEvacuationCreate.motorcycle_year)
+
+
+@router.message(StateFilter(ApplicationServiceCreate.motorcycle_year))
+async def motorcycle_year_process(
+    message: Message,
+    state: FSMContext,
+    user_service: UserService,
+    motorcycle_service: MotorcycleService,
+    messages: dict,
+    keyboards: dict,
+):
+    try:
+        year = int(message.text.strip())
+    except ValueError:
+        await message.answer(text=messages["not_valid_year"])
+        return
+
+    if year < 1930 or year > 2025:
+        await message.answer(
+            text=messages["not_valid_year"],
+        )
+        return
+
+    data = await state.get_data()
+
+    motorcycle_model = data["motorcycle_model"]
+
+    motorcycle = MotorcycleModel(
+        user_telegram_id=str(message.from_user.id),
+        motorcycle_model=motorcycle_model,
+        year=year,
+    )
+    try:
+        motorcycle = await motorcycle_service.create(motorcycle)
+    except Exception as error:
+        await message.answer(
+            text=messages["add_motorcycle_error"],
+        )
+        await back_to_start(message, user_service, messages, keyboards)
+        log.error(f"Ошибка при создании мотоцикла: {error}")
+        return
+
+    await state.update_data(motorcycle_id=str(motorcycle.id))
+
+    await message.answer(
+        text=messages["choose_date_for_application_service"],
+        reply_markup=await get_date_paginated_kb(datetime.today().replace(day=1)),
+    )
+
+
+@router.message(StateFilter(ApplicationEvacuationCreate.motorcycle_year))
+async def motorcycle_year_process_evacuation(
+    message: Message,
+    state: FSMContext,
+    user_service: UserService,
+    motorcycle_service: MotorcycleService,
+    messages: dict,
+    keyboards: dict,
+):
+    try:
+        year = int(message.text.strip())
+    except ValueError:
+        await message.answer(text=messages["not_valid_year"])
+        return
+
+    if year < 1930 or year > 2025:
+        await message.answer(
+            text=messages["not_valid_year"],
+        )
+        return
+
+    data = await state.get_data()
+
+    motorcycle_model = data["motorcycle_model"]
+
+    motorcycle = MotorcycleModel(
+        user_telegram_id=str(message.from_user.id),
+        motorcycle_model=motorcycle_model,
+        year=year,
+    )
+    try:
+        motorcycle = await motorcycle_service.create(motorcycle)
+    except Exception as error:
+        await message.answer(
+            text=messages["add_motorcycle_error"],
+        )
+        await back_to_start(message, user_service, messages, keyboards)
+        log.error(f"Ошибка при создании мотоцикла: {error}")
+        return
+
+    await state.update_data(motorcycle_id=str(motorcycle.id))
+    await state.set_state(ApplicationEvacuationCreate.description)
+    await message.answer(
+        text=messages["description_for_application_evacuation"],
+    )
+
+
+@router.message(StateFilter(ApplicationEvacuationCreate.description))
+async def description_for_application_evacuation(
+    message: Message,
+    state: FSMContext,
+    messages: dict,
+    keyboards: dict,
+):
+    description = message.text.strip()
+
+    await state.update_data(description=description)
+    await state.set_state(ApplicationEvacuationCreate.location)
+    await message.answer(
+        text=messages["location_for_application_evacuation"],
+        reply_markup=keyboards["location_for_application_evacuation"],
+    )
+
+
+@router.message(StateFilter(ApplicationEvacuationCreate.location))
+async def location_for_application_evacuation(
+    message: Message,
+    state: FSMContext,
+    application_service: ApplicationService,
+    user_service: UserService,
+    messages: dict,
+    keyboards: dict,
+):
+    latitude = message.location.latitude
+    longitude = message.location.longitude
+    data = await state.get_data()
+    application = ApplicationModel(
+        user_telegram_id=str(message.from_user.id),
+        motorcycle_id=data.get("motorcycle_id"),
+        description=data.get("description"),
+        latitude=latitude,
+        longitude=longitude,
+        type=Type.EVACUATION,
+    )
+    try:
+        application = await application_service.create(application)
+    except Exception as error:
+        await message.answer(
+            text=messages["create_application_error"],
+        )
+        await back_to_start(message, user_service, messages, keyboards)
+        log.error(f"Ошибка при создании заявки: {error}")
+        return
+    finally:
+        await state.clear()
+
+    print(
+        messages["application_evacuation"](
+            motorcycle_model=data.get("motorcycle_model"),
+            description=data.get("description"),
+            status=application.status.value,
+        )
+    )
+
+    await message.answer(
+        text=messages["application_evacuation"](
+            motorcycle_model=data.get("motorcycle_model"),
+            description=data.get("description"),
+            status=application.status.value,
+        ),
+        reply_markup=keyboards["application"](application.id),
+    )
+
+    await message.answer(
+        text=messages["create_application_evacuation_successful"],
+        reply_markup=keyboards["user_main_menu"],
     )
 
 
@@ -82,6 +320,27 @@ async def choose_motorcycle_process(
     await callback.message.edit_text(
         text=messages["choose_date_for_application_service"],
         reply_markup=await get_date_paginated_kb(datetime.today().replace(day=1)),
+    )
+
+
+@router.callback_query(
+    lambda callback_name: callback_name.data.startswith("motorcycle_for_evacuation:")
+)
+async def choose_motorcycle_process_for_evacuation(
+    callback: CallbackQuery,
+    messages: dict,
+    state: FSMContext,
+    motorcycle_service: MotorcycleService,
+):
+    motorcycle_id = callback.data.split(":")[1]
+    motorcycle = await motorcycle_service.get(UUID(motorcycle_id))
+    await state.update_data(
+        motorcycle_id=motorcycle_id, motorcycle_model=motorcycle.motorcycle_model
+    )
+    await state.set_state(ApplicationEvacuationCreate.description)
+    await callback.message.delete()
+    await callback.message.answer(
+        text=messages["description_for_application_evacuation"], reply_markup=ReplyKeyboardRemove()
     )
 
 
@@ -196,7 +455,7 @@ async def get_time_paginated_kb(
     application_service: ApplicationService, date: datetime
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    day = date.day
+    day = date.day - datetime.today().day
 
     slots = await get_time_slots(application_service, day)
 
@@ -223,12 +482,22 @@ async def get_time_paginated_kb(
         if i % 4 == 0 and i != 0:
             builder.row(*buttons_row)
             buttons_row = []
-        buttons_row.append(
-            InlineKeyboardButton(
-                text=slot.replace("-", ":"),
-                callback_data=f"time_for_application:{date.strftime('%d-%m-%Y') + ' ' + slot}",
+
+        slot_time = datetime.strptime(slot, "%H-%M")
+        if date.replace(hour=slot_time.hour, minute=slot_time.minute) < datetime.now():
+            buttons_row.append(
+                InlineKeyboardButton(
+                    text=slot.replace("-", ":"),
+                    callback_data="old_date",
+                )
             )
-        )
+        else:
+            buttons_row.append(
+                InlineKeyboardButton(
+                    text=slot.replace("-", ":"),
+                    callback_data=f"time_for_application:{date.strftime('%d-%m-%Y') + ' ' + slot}",
+                )
+            )
 
     if buttons_row:
         builder.row(*buttons_row)
@@ -360,7 +629,6 @@ async def promo_code_process(
     user_service: UserService,
     messages: dict,
     keyboards: dict,
-    bot: Bot,
 ):
     promo_code = message.text.strip()
     if promo_code not in SKIP:
