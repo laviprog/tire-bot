@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from advanced_alchemy.base import UUIDAuditBase
-from advanced_alchemy.types import DateTimeUTC
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Enum as SQLAlchemyEnum, ForeignKey
+from sqlalchemy import Enum as SQLAlchemyEnum, ForeignKey, String
 
 if TYPE_CHECKING:
     from src.users.models import UserModel
@@ -41,8 +40,11 @@ class ApplicationModel(UUIDAuditBase):
     photo_id: Mapped[str | None]
     video_id: Mapped[str | None]
     service_datetime: Mapped[datetime | None]
+    latitude: Mapped[float | None]
+    longitude: Mapped[float | None]
 
     user_telegram_id: Mapped[str] = mapped_column(ForeignKey("users.telegram_id"), nullable=False)
+    worker_telegram_id: Mapped[str] = mapped_column(String(64), nullable=True)
     motorcycle_id: Mapped[UUID | None] = mapped_column(ForeignKey("motorcycles.id"))
     promo_code_id: Mapped[UUID | None] = mapped_column(ForeignKey("promo_codes.id"))
 

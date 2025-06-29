@@ -11,6 +11,7 @@ LEAVE_UNCHANGED = ["Оставить без изменения"]
 SKIP = ["Пропустить"]
 ADD_MOTORCYCLE = ["Добавить мотоцикл ➕"]
 CREATE_APPLICATION_SERVICE = ["Записаться в сервис 🛠️"]
+CREATE_APPLICATION_EVACUATION = ["Вызвать эвакуатор 🚑"]
 CHECK_MOTORCYCLE = ["Посмотреть мотоциклы 🏍️"]
 GARAGE = ["Мой гараж 🏍️"]
 
@@ -77,10 +78,7 @@ KEYBOARDS = {
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="Изменить", callback_data=f"edit_application:{application_id}"
-                    ),
-                    InlineKeyboardButton(
-                        text="Отменить", callback_data=f"canceled_application:{application_id}"
+                        text="Отменить", callback_data=f"cancel_application:{application_id}"
                     ),
                 ]
             ]
@@ -116,6 +114,15 @@ KEYBOARDS = {
                 [
                     KeyboardButton(text="Отправить номер телефона", request_contact=True),
                     KeyboardButton(text="Оставить без изменения"),
+                ]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        ),
+        "location_for_application_evacuation": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Отправить местоположение", request_location=True),
                 ]
             ],
             resize_keyboard=True,
