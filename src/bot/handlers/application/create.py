@@ -42,6 +42,7 @@ class ApplicationServiceCreate(StatesGroup):
     media_id = State()
     promo_code_id = State()
 
+
 class ApplicationEvacuationCreate(StatesGroup):
     motorcycle_id = State()
     motorcycle_model = State()
@@ -78,9 +79,9 @@ async def start_create_application_evacuation(
         )
 
     await message.answer(
-        text=messages["choose_motorcycle_for_application_evacuation"], reply_markup=builder.as_markup()
+        text=messages["choose_motorcycle_for_application_evacuation"],
+        reply_markup=builder.as_markup(),
     )
-
 
 
 @router.message(Text(CREATE_APPLICATION_SERVICE))
@@ -123,6 +124,7 @@ async def motorcycle_model_process(message: Message, state: FSMContext, messages
     await message.answer(text=messages["add_motorcycle_year_process"])
 
     await state.set_state(ApplicationServiceCreate.motorcycle_year)
+
 
 @router.message(StateFilter(ApplicationEvacuationCreate.motorcycle_model))
 async def motorcycle_model_process_evacuation(message: Message, state: FSMContext, messages: dict):
@@ -251,7 +253,7 @@ async def location_for_application_evacuation(
     message: Message,
     state: FSMContext,
     application_service: ApplicationService,
-        user_service: UserService,
+    user_service: UserService,
     messages: dict,
     keyboards: dict,
 ):
@@ -278,11 +280,13 @@ async def location_for_application_evacuation(
     finally:
         await state.clear()
 
-    print(messages["application_evacuation"](
+    print(
+        messages["application_evacuation"](
             motorcycle_model=data.get("motorcycle_model"),
             description=data.get("description"),
             status=application.status.value,
-        ))
+        )
+    )
 
     await message.answer(
         text=messages["application_evacuation"](
@@ -336,9 +340,9 @@ async def choose_motorcycle_process_for_evacuation(
     await state.set_state(ApplicationEvacuationCreate.description)
     await callback.message.delete()
     await callback.message.answer(
-        text=messages["description_for_application_evacuation"],
-        reply_markup=ReplyKeyboardRemove()
+        text=messages["description_for_application_evacuation"], reply_markup=ReplyKeyboardRemove()
     )
+
 
 async def get_time_slots(
     application_service: ApplicationService,
@@ -484,7 +488,7 @@ async def get_time_paginated_kb(
             buttons_row.append(
                 InlineKeyboardButton(
                     text=slot.replace("-", ":"),
-                    callback_data=f"old_date",
+                    callback_data="old_date",
                 )
             )
         else:

@@ -18,5 +18,5 @@ class ApplicationService(SQLAlchemyAsyncRepositoryService[ApplicationModel, Appl
             {
                 "status": Status.CANCELLED,
             },
-            application_id
+            application_id,
         )

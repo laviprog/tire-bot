@@ -57,10 +57,12 @@ MESSAGES = {
         description,
         service_datetime,
         status: f"<b>Заявка в сервисный центр</b>:\nМотоцикл: {motorcycle_model}\nОписание: {description}\nВремя: {service_datetime.strftime('%d-%m-%Y %H:%M')}\nСтатус: {status}",
-        "application_evacuation": lambda motorcycle_model, description, status: f"<b>Заявка на эвакуацию:</b>\nМотоцикл: {motorcycle_model}\nОписание: {description}\nСтатус: {status}",
+        "application_evacuation": lambda motorcycle_model,
+        description,
+        status: f"<b>Заявка на эвакуацию:</b>\nМотоцикл: {motorcycle_model}\nОписание: {description}\nСтатус: {status}",
         "cancel_application_error": "Не удалось отменить заявку",
         "cancel_application_successful": "Заяка успешно отменена",
-        "create_application_evacuation_successful": "Ваша заявка успешно создана, мы уже спешим к вам на помощь!"
+        "create_application_evacuation_successful": "Ваша заявка успешно создана, мы уже спешим к вам на помощь!",
     },
     # "en": {...},
 }
