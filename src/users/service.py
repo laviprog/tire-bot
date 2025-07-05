@@ -13,6 +13,14 @@ class UserService(SQLAlchemyAsyncRepositoryService[UserModel, UserRepository]):
         kwargs.setdefault("auto_commit", True)
         super().__init__(session=session, **kwargs)
 
+    async def change_role(self, username: str, role: Role) -> UserModel:
+        """Make user an admin by username"""
+        user = await self.repository.get_one_or_none(UserModel.username == username)
+        if user is None:
+            raise ValueError(f"User with username {username} not found")
+        user.role = role
+        return await self.repository.update(user)
+
     async def get_by_telegram_id(self, telegram_id: str) -> UserModel | None:
         """Get user by telegram ID"""
         return await self.repository.get_one_or_none(UserModel.telegram_id == telegram_id)

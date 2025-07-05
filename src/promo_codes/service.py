@@ -21,7 +21,7 @@ class PromoCodeService(SQLAlchemyAsyncRepositoryService[PromoCodeModel, PromoCod
         :param promo_code: promo code that check in db
         :return: ID or None
         """
-        promo_code = await self.get_one_or_none(PromoCodeModel.code == promo_code.strip().lower())
+        promo_code = await self.get_one_or_none(PromoCodeModel.code == promo_code.strip())
         if promo_code:
             return str(promo_code.id)
         return None

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from aiogram import Router
+from aiogram import Router, Bot
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -14,6 +14,7 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from babel.dates import format_date
+from redis.asyncio import Redis
 
 from src import log
 from src.applications import ApplicationService, ApplicationModel, Type
@@ -26,6 +27,7 @@ from src.bot.handlers.keyboards import (
 )
 from src.bot.pagination import DatePagination
 from src.bot.pagination.pagination import TimePagination
+from src.bot.utils import send_application
 from src.motorcycles import MotorcycleModel, MotorcycleService
 from src.promo_codes import PromoCodeService
 from src.users import UserService
@@ -346,14 +348,13 @@ async def choose_motorcycle_process_for_evacuation(
 
 async def get_time_slots(
     application_service: ApplicationService,
-    day: int = 0,
-    start_hours: int = 9,
-    end_hours: int = 19,
-    max_record: int = 10,
+    start_hours: int,
+    end_hours: int,
+    max_records: int,
+    date: datetime,
     interval_minutes: int = 30,
 ) -> list[str]:
-    start_day = datetime.today() + timedelta(days=day)
-    start_day = start_day.replace(tzinfo=timezone.utc)
+    start_day = date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
     end_day = start_day.replace(
         hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc
     )
@@ -376,7 +377,7 @@ async def get_time_slots(
     time = start_day.replace(hour=start_hours, minute=0, second=0, microsecond=0)
     while time.hour < end_hours:
         time_string = time.strftime("%H-%M")
-        if busy_time.get(time_string, 0) < max_record:
+        if busy_time.get(time_string, 0) < max_records:
             slots.append(time_string)
         time += timedelta(minutes=interval_minutes)
 
@@ -452,20 +453,42 @@ async def get_date_paginated_kb(date: datetime) -> InlineKeyboardMarkup:
 
 
 async def get_time_paginated_kb(
-    application_service: ApplicationService, date: datetime
+    application_service: ApplicationService, date: datetime, redis: Redis
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    day = date.day - datetime.today().day
 
-    slots = await get_time_slots(application_service, day)
+    operating_mode = await redis.get("operating_mode")
+    max_records = await redis.get("max_records")
+    excluded_dates = await redis.get("excluded_dates")
+
+    excluded_dates = (
+        [datetime.strptime(date, "%d.%m.%Y") for date in excluded_dates.decode("utf-8").split(",")]
+        if excluded_dates
+        else []
+    )
+    operating_mode = operating_mode.decode("utf-8") if operating_mode else "10-20"
+    max_records = int(max_records.decode("utf-8")) if max_records else 10
+
+    start, end = map(int, operating_mode.split("-"))
+
+    if any(date.date() == excluded_date.date() for excluded_date in excluded_dates):
+        slots = []
+    else:
+        slots = await get_time_slots(
+            application_service,
+            start_hours=start,
+            end_hours=end,
+            max_records=max_records,
+            date=date,
+        )
 
     builder.row(
         InlineKeyboardButton(
-            text="⬅️" if day > 0 else " ",
+            text="⬅️" if date > datetime.today() else " ",
             callback_data=TimePagination(
                 date=(date - timedelta(days=1)).strftime("%d-%m-%Y")
             ).pack()
-            if day > 0
+            if date > datetime.today()
             else "skip_date",
         ),
         InlineKeyboardButton(text=date.strftime("%d-%m-%Y"), callback_data="skip_date"),
@@ -523,12 +546,12 @@ async def date_pagination_callback(callback: CallbackQuery, callback_data: DateP
 
 @router.callback_query(TimePagination.filter())
 async def time_pagination_callback(
-    callback: CallbackQuery, callback_data: TimePagination, application_service: ApplicationService
+    callback: CallbackQuery, callback_data: TimePagination, application_service: ApplicationService, redis: Redis
 ):
     date = datetime.strptime(callback_data.date, "%d-%m-%Y")
 
     await callback.message.edit_reply_markup(
-        reply_markup=await get_time_paginated_kb(application_service, date=date)
+        reply_markup=await get_time_paginated_kb(application_service, date=date, redis=redis)
     )
 
 
@@ -544,12 +567,12 @@ async def old_date(callback: CallbackQuery, messages: dict):
 
 @router.callback_query(lambda callback_name: callback_name.data.startswith("date_for_application:"))
 async def choose_date_process(
-    callback: CallbackQuery, messages: dict, application_service: ApplicationService
+    callback: CallbackQuery, messages: dict, application_service: ApplicationService, redis: Redis
 ):
     date = datetime.strptime(callback.data.split(":")[1], "%d-%m-%Y")
     await callback.message.edit_text(
         text=messages["choose_time_for_application_service"],
-        reply_markup=await get_time_paginated_kb(application_service, date=date),
+        reply_markup=await get_time_paginated_kb(application_service, date=date, redis=redis),
     )
 
 
@@ -623,6 +646,7 @@ async def media_process(
 @router.message(StateFilter(ApplicationServiceCreate.promo_code_id))
 async def promo_code_process(
     message: Message,
+    bot: Bot,
     state: FSMContext,
     promo_code_service: PromoCodeService,
     application_service: ApplicationService,
@@ -665,38 +689,22 @@ async def promo_code_process(
     finally:
         await state.clear()
 
-    if data.get("photo_id", None):
-        await message.answer_photo(
-            photo=data.get("photo_id"),
-            caption=messages["application"](
-                motorcycle_model=data.get("motorcycle_model"),
-                description=data.get("description"),
-                service_datetime=service_dt,
-                status=application.status.value,
-            ),
-            reply_markup=keyboards["application"](application.id),
-        )
+    await message.answer(
+        text=messages["promo_code_added_successfully"],
+        reply_markup=keyboards["user_main_menu"],
+    )
+    await send_application(
+        bot=bot,
+        chat_id=message.chat.id,
+        text=messages["application"](
+            motorcycle_model=data.get("motorcycle_model"),
+            description=data.get("description"),
+            service_datetime=service_dt,
+            status=application.status.value,
+        ),
+        reply_markup=keyboards["application"](application.id),
+        photo_id=data.get("photo_id", None),
+        video_id=data.get("video_id", None),
+    )
 
-    elif data.get("video_id", None):
-        await message.answer_video(
-            video=data.get("video_id"),
-            caption=messages["application"](
-                motorcycle_model=data.get("motorcycle_model"),
-                description=data.get("description"),
-                service_datetime=service_dt,
-                status=application.status.value,
-            ),
-            reply_markup=keyboards["application"](application.id),
-        )
-    else:
-        await message.answer(
-            text=messages["application"](
-                motorcycle_model=data.get("motorcycle_model"),
-                description=data.get("description"),
-                service_datetime=service_dt,
-                status=application.status.value,
-            ),
-            reply_markup=keyboards["application"](application.id),
-        )
-
-    await back_to_start(message, user_service, messages, keyboards)
+    # TODO send to admin

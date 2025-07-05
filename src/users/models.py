@@ -28,6 +28,7 @@ class UserModel(UUIDAuditBase):
 
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     telegram_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    chat_id: Mapped[str | None] = mapped_column(String(128), unique=True)
     name: Mapped[str | None] = mapped_column(String(128))
     phone_number: Mapped[str | None] = mapped_column(String(32))
     role: Mapped[Role] = mapped_column(SQLAlchemyEnum(Role), default=Role.USER)
