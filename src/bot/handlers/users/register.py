@@ -20,11 +20,13 @@ async def create_profile_start(
 ):
     telegram_id = str(message.from_user.id)
     username = message.from_user.username
+    chat_id = str(message.chat.id)
 
     await user_service.create(
         UserModel(
             telegram_id=telegram_id,
             username=username,
+            chat_id=chat_id,
         )
     )
 

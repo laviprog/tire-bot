@@ -14,6 +14,17 @@ CREATE_APPLICATION_SERVICE = ["Записаться в сервис 🛠️"]
 CREATE_APPLICATION_EVACUATION = ["Вызвать эвакуатор 🚑"]
 CHECK_MOTORCYCLE = ["Посмотреть мотоциклы 🏍️"]
 GARAGE = ["Мой гараж 🏍️"]
+SETTINGS = ["Настройки ⚙️"]
+MANAGE_ROLES = ["Управление ролями 👥"]
+ADD_ADMIN = ["Добавить админа"]
+ADD_WORKER = ["Добавить работника"]
+
+MAX_RECORDS = ["Максимальное количество записей"]
+OPERATING_MODE = ["Режим работы"]
+EXCLUDED_DATES = ["Исключить рабочие дни"]
+ADD_PROMO_CODE = ["Добавить промокод ➕"]
+CHECK_PROMO_CODES = ["Посмотреть промокоды ✅"]
+PROMO_CODES = ["Промокоды 💳"]
 
 KEYBOARDS = {
     "ru": {
@@ -33,15 +44,37 @@ KEYBOARDS = {
         "admin_main_menu": ReplyKeyboardMarkup(
             keyboard=[
                 [
-                    KeyboardButton(text="Заявки 📋"),
-                    KeyboardButton(text="Мастера 🛠️"),
+                    KeyboardButton(text="Управление ролями 👥"),
                 ],
                 [
                     KeyboardButton(text="Промокоды 💳"),
-                    KeyboardButton(text="Пользователи 👥"),
+                    KeyboardButton(text="Настройки ⚙️"),
                 ],
             ],
             resize_keyboard=True,
+        ),
+        "manage_roles_menu": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Добавить админа"),
+                    KeyboardButton(text="Добавить работника"),
+                ],
+                [
+                    KeyboardButton(text="Вернуться в начало ⬅️"),
+                ],
+            ]
+        ),
+        "admin_settings_menu": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Максимальное количество записей"),
+                    KeyboardButton(text="Режим работы"),
+                ],
+                [
+                    KeyboardButton(text="Исключить рабочие дни"),
+                    KeyboardButton(text="Вернуться в начало ⬅️"),
+                ],
+            ]
         ),
         "worker_main_menu": ReplyKeyboardMarkup(
             keyboard=[
@@ -134,6 +167,30 @@ KEYBOARDS = {
                     KeyboardButton(text="Посмотреть мотоциклы 🏍️"),
                     KeyboardButton(text="Добавить мотоцикл ➕"),
                     KeyboardButton(text="Вернуться в начало ⬅️"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "promo_codes_menu": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Посмотреть промокоды ✅"),
+                    KeyboardButton(text="Добавить промокод ➕"),
+                    KeyboardButton(text="Вернуться в начало ⬅️"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "promo_code_options": lambda promo_code_id: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Изменить ✏️", callback_data=f"edit_promo_code:{promo_code_id}"
+                    ),
+                    InlineKeyboardButton(
+                        text="Удалить ❌",
+                        callback_data=f"delete_promo_code:{promo_code_id}",
+                    ),
                 ],
             ],
             resize_keyboard=True,

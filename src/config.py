@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     PG_USER: str
     PG_PASSWORD: str
 
+    MAX_RECORDS: int = 10
+    OPERATING_MODE: str = "10-20"
+
     @property
     def REDIS_URL(self):
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}"
