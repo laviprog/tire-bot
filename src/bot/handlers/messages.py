@@ -282,6 +282,7 @@ MESSAGES = {
             f"Описание: {description}\n"
             f"Статус: {STATUS_MAP[status]}" + (f"\nАдрес: {location}" if location else "")
         ),
+        "application_created_successful": "Заявка была успешно создана!"
     },
     # "en": {...},
 }

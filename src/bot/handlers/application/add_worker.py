@@ -79,7 +79,7 @@ async def admin_assigned_worker(
             text=messages["assigned_application_notification_for_admin"](
                 application, user, motorcycle, promo_code, worker
             ),
-            reply_markup=keyboards["admin_cancele_app"](application_number),
+            reply_markup=keyboards["admin_cancel_app"](application_number),
             photo_id=application.photo_id,
             video_id=application.video_id,
         )
