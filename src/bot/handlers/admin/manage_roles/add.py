@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, ReplyKeyboardRemove
 
+from src import log
 from src.bot.filters import Text
 from src.bot.handlers.keyboards import ADD_ADMIN, ADD_WORKER
 from src.users import UserService, Role
@@ -48,9 +49,13 @@ async def process_admin_username(
             reply_markup=keyboards["admin_main_menu"],
         )
     except ValueError:
-        await message.answer(text=messages["user_not_found"](username), reply_markup=keyboards["manage_roles_menu"])
+        await message.answer(
+            text=messages["user_not_found"](username), reply_markup=keyboards["manage_roles_menu"]
+        )
     except Exception:
-        await message.answer(text=messages["error_adding_admin"], reply_markup=keyboards["manage_roles_menu"])
+        await message.answer(
+            text=messages["error_adding_admin"], reply_markup=keyboards["manage_roles_menu"]
+        )
     finally:
         await state.clear()
 
@@ -73,7 +78,7 @@ async def process_worker_username(
     bot: Bot,
 ):
     username = message.text.strip()
-
+    username = username[1:] if username.startswith("@") else username
     try:
         user = await user_service.change_role(username=username, role=Role.WORKER)
         chat_id = user.chat_id
@@ -88,7 +93,8 @@ async def process_worker_username(
         )
     except ValueError:
         await message.answer(text=messages["user_not_found"](username))
-    except Exception:
+    except Exception as e:
         await message.answer(text=messages["error_adding_worker"])
+        log.info(f"Error adding worker role for user {username}: {e}")
     finally:
         await state.clear()

@@ -1,0 +1,229 @@
+from aiogram import Router, Bot
+from aiogram.types import CallbackQuery
+
+from src import log
+from src.applications import ApplicationService, Status
+from src.bot.utils import send_application
+from src.motorcycles import MotorcycleService
+from src.promo_codes import PromoCodeService
+from src.users import UserService
+
+router = Router()
+
+
+@router.callback_query(
+    lambda callback_name: callback_name.data.startswith("in_progress_application:")
+)
+async def change_status_in_progress_application_callback(
+    callback: CallbackQuery,
+    application_service: ApplicationService,
+    messages: dict,
+    keyboards: dict,
+    bot: Bot,
+    motorcycle_service: MotorcycleService,
+    promo_code_service: PromoCodeService,
+    user_service: UserService,
+):
+    application_number = int(callback.data.split(":")[1])
+    try:
+        application = await application_service.get_by_number(application_number)
+        if not application:
+            raise ValueError(f"Application with number {application_number} not found")
+        user = await user_service.get_by_telegram_id(str(application.user_telegram_id))
+        motorcycle = await motorcycle_service.get(application.motorcycle_id)
+        promo_code = (
+            await promo_code_service.get(application.promo_code_id)
+            if application.promo_code_id
+            else None
+        )
+        admins = await user_service.get_admins()
+        await application_service.update({"status": Status.IN_PROGRESS}, application.id)
+        await callback.message.delete()
+        await send_application(
+            bot,
+            callback.message.chat.id,
+            text=messages["assigned_application_notification_for_worker"](
+                application, user, motorcycle, promo_code
+            ),
+            reply_markup=keyboards["worker_completed"](application_number),
+            photo_id=application.photo_id,
+            video_id=application.video_id,
+        )
+        await callback.answer(text=messages["status_updated_successfully"], show_alert=True)
+
+        await send_application(
+            bot,
+            int(application.user_telegram_id),
+            text=messages["assigned_application_notification_for_user"](
+                application, motorcycle, promo_code
+            ),
+            reply_markup=keyboards["application"](application.id),
+            photo_id=application.photo_id,
+            video_id=application.video_id,
+        )
+
+        for admin in admins:
+            await send_application(
+                bot,
+                int(admin.telegram_id),
+                text=messages["in_progress_application_notification_for_admin"](
+                    application, user, motorcycle, promo_code
+                ),
+                reply_markup=keyboards["admin_cancele_app"](application_number),
+                photo_id=application.photo_id,
+                video_id=application.video_id,
+            )
+
+    except Exception as e:
+        log.error(f"Error updating application status: {e}")
+        await callback.answer(text=messages["status_update_error"], show_alert=True)
+
+
+@router.callback_query(
+    lambda callback_name: callback_name.data.startswith("completed_application:")
+)
+async def change_status_completed_application_callback(
+    callback: CallbackQuery,
+    application_service: ApplicationService,
+    messages: dict,
+    bot: Bot,
+    motorcycle_service: MotorcycleService,
+    promo_code_service: PromoCodeService,
+    user_service: UserService,
+):
+    application_number = int(callback.data.split(":")[1])
+    try:
+        application = await application_service.get_by_number(application_number)
+        if not application:
+            raise ValueError(f"Application with number {application_number} not found")
+        user = await user_service.get_by_telegram_id(str(application.user_telegram_id))
+        motorcycle = await motorcycle_service.get(application.motorcycle_id)
+        promo_code = (
+            await promo_code_service.get(application.promo_code_id)
+            if application.promo_code_id
+            else None
+        )
+        admins = await user_service.get_admins()
+        await application_service.update({"status": Status.COMPLETED}, application.id)
+        await callback.message.delete()
+        await send_application(
+            bot,
+            callback.message.chat.id,
+            text=messages["assigned_application_notification_for_worker"](
+                application, user, motorcycle, promo_code
+            ),
+            photo_id=application.photo_id,
+            video_id=application.video_id,
+        )
+        await callback.answer(text=messages["status_updated_successfully"], show_alert=True)
+
+        await send_application(
+            bot,
+            int(application.user_telegram_id),
+            text=messages["completed_application_notification_for_user"](
+                application, motorcycle, promo_code
+            ),
+            photo_id=application.photo_id,
+            video_id=application.video_id,
+        )
+
+        for admin in admins:
+            await send_application(
+                bot,
+                int(admin.telegram_id),
+                text=messages["completed_application_notification_for_admin"](
+                    application, user, motorcycle, promo_code
+                ),
+                photo_id=application.photo_id,
+                video_id=application.video_id,
+            )
+    except Exception as e:
+        log.error(f"Error updating application status: {e}")
+        await callback.answer(text=messages["status_update_error"], show_alert=True)
+
+
+@router.callback_query(
+    lambda callback_name: callback_name.data.startswith("evacuation_in_progress:")
+)
+async def change_status_in_progress_evacuation_callback(
+    callback: CallbackQuery,
+    application_service: ApplicationService,
+    messages: dict,
+    keyboards: dict,
+    bot: Bot,
+    motorcycle_service: MotorcycleService,
+    user_service: UserService,
+):
+    application_number = int(callback.data.split(":")[1])
+    try:
+        application = await application_service.get_by_number(application_number)
+        if not application:
+            raise ValueError(f"Application with number {application_number} not found")
+        user = await user_service.get_by_telegram_id(str(application.user_telegram_id))
+        motorcycle = await motorcycle_service.get(application.motorcycle_id)
+        await application_service.update({"status": Status.IN_PROGRESS}, application.id)
+        await callback.message.delete()
+        await bot.send_message(
+            chat_id=callback.message.chat.id,
+            text=messages["evacuation_application_notification_for_admin"](
+                application, user, motorcycle
+            ),
+            reply_markup=keyboards["evacuation_completed"](application.number),
+        )
+        await callback.answer(text=messages["status_updated_successfully"], show_alert=True)
+
+        await bot.send_message(
+            chat_id=application.user_telegram_id,
+            text=messages["evacuation_in_progress"](
+                motorcycle.motorcycle_model,
+                application.description,
+                application.status,
+                application.location,
+            ),
+            reply_markup=keyboards["application_evacuation"](application.id),
+        )
+
+    except Exception as e:
+        log.error(f"Error updating application status: {e}")
+        await callback.answer(text=messages["status_update_error"], show_alert=True)
+
+
+@router.callback_query(lambda callback_name: callback_name.data.startswith("completed_evacuation:"))
+async def change_status_completed_evacuation_callback(
+    callback: CallbackQuery,
+    application_service: ApplicationService,
+    messages: dict,
+    bot: Bot,
+    motorcycle_service: MotorcycleService,
+    user_service: UserService,
+):
+    application_number = int(callback.data.split(":")[1])
+    try:
+        application = await application_service.get_by_number(application_number)
+        if not application:
+            raise ValueError(f"Application with number {application_number} not found")
+        user = await user_service.get_by_telegram_id(str(application.user_telegram_id))
+        motorcycle = await motorcycle_service.get(application.motorcycle_id)
+        await application_service.update({"status": Status.COMPLETED}, application.id)
+        await callback.message.delete()
+        await bot.send_message(
+            chat_id=callback.message.chat.id,
+            text=messages["evacuation_application_notification_for_admin"](
+                application, user, motorcycle
+            ),
+        )
+        await callback.answer(text=messages["status_updated_successfully"], show_alert=True)
+
+        await bot.send_message(
+            chat_id=int(application.user_telegram_id),
+            text=messages["evacuation_completed"](
+                motorcycle.motorcycle_model,
+                application.description,
+                application.status,
+                application.location,
+            ),
+        )
+
+    except Exception as e:
+        log.error(f"Error updating application status: {e}")
+        await callback.answer(text=messages["status_update_error"], show_alert=True)
