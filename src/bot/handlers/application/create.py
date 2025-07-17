@@ -688,6 +688,11 @@ async def promo_code_process(
                 text=messages["not_found_promo_code"], reply_markup=keyboards["skip_step"]
             )
             return
+    else:
+        await message.answer(
+            text=messages["application_created_successful"],
+            reply_markup=keyboards["user_main_menu"],
+        )
 
     data = await state.get_data()
     service_dt = datetime.strptime(data.get("datetime"), "%d-%m-%Y %H-%M").replace(
