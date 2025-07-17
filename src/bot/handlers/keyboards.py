@@ -62,7 +62,8 @@ KEYBOARDS = {
                 [
                     KeyboardButton(text="Вернуться в начало ⬅️"),
                 ],
-            ]
+            ],
+            resize_keyboard=True,
         ),
         "admin_settings_menu": ReplyKeyboardMarkup(
             keyboard=[
@@ -79,7 +80,7 @@ KEYBOARDS = {
         "worker_main_menu": ReplyKeyboardMarkup(
             keyboard=[
                 [
-                    KeyboardButton(text="Пока ничего нет"),
+                    KeyboardButton(text="Мой профиль 👤"),
                 ],
             ],
             resize_keyboard=True,
@@ -112,6 +113,15 @@ KEYBOARDS = {
                 [
                     InlineKeyboardButton(
                         text="Отменить", callback_data=f"cancel_application:{application_id}"
+                    ),
+                ]
+            ]
+        ),
+        "application_evacuation": lambda application_id: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Отменить", callback_data=f"cancel_evacuation:{application_id}"
                     ),
                 ]
             ]
@@ -181,6 +191,69 @@ KEYBOARDS = {
             ],
             resize_keyboard=True,
         ),
+        "new_application_notification_for_admin": lambda application_number: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Назначить работника 👷",
+                        callback_data=f"add_worker_to_app:{application_number}",
+                    ),
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="Отклонить ❌",
+                        callback_data=f"admin_cancel_app:{application_number}",
+                    ),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "new_evacuation_notification_for_admin": lambda application_number, application_id: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Взять в работу 🛠️",
+                        callback_data=f"evacuation_in_progress:{application_number}",
+                    ),
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="Отклонить ❌",
+                        callback_data=f"admin_cancel_evacuation:{application_id}",
+                    ),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "admin_cancel_app": lambda application_number: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Отменить",
+                        callback_data=f"admin_cancel_app:{application_number}",
+                    ),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "add_worker_to_app": lambda application_number, workers: InlineKeyboardMarkup(
+            inline_keyboard=[
+                *(
+                    [
+                        InlineKeyboardButton(
+                            text=f"{worker.name} @{worker.username}",
+                            callback_data=f"select_worker:{application_number}:{worker.username}",
+                        )
+                    ]
+                    for worker in workers
+                ),
+                [
+                    InlineKeyboardButton(
+                        text="Назад ⬅️", callback_data=f"back_to_app_menu:{application_number}"
+                    )
+                ],
+            ]
+        ),
         "promo_code_options": lambda promo_code_id: InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -190,6 +263,39 @@ KEYBOARDS = {
                     InlineKeyboardButton(
                         text="Удалить ❌",
                         callback_data=f"delete_promo_code:{promo_code_id}",
+                    ),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "worker_in_progress": lambda application_number: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Начать работу 🛠️",
+                        callback_data=f"in_progress_application:{application_number}",
+                    ),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "worker_completed": lambda application_number: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Закончить работу ✅",
+                        callback_data=f"completed_application:{application_number}",
+                    ),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "evacuation_completed": lambda application_number: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Закончить эвакуацию ✅",
+                        callback_data=f"completed_evacuation:{application_number}",
                     ),
                 ],
             ],

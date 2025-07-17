@@ -32,3 +32,24 @@ async def send_application(
         )
     else:
         await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+
+
+async def send_evacuation(
+    bot: Bot,
+    chat_id: int,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+):
+    if latitude is not None and longitude is not None:
+        message = await bot.send_location(
+            chat_id=chat_id,
+            latitude=latitude,
+            longitude=longitude,
+        )
+        await bot.send_message(
+            chat_id, text, reply_markup=reply_markup, reply_to_message_id=message.message_id
+        )
+    else:
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)

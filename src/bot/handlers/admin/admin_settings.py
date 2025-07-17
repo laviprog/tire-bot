@@ -127,9 +127,7 @@ async def admin_operating_mode_process(
 
 
 @router.message(Text(EXCLUDED_DATES), IsAdmin())
-async def admin_excluded_dates(
-    message: Message, state: FSMContext, messages: dict
-):
+async def admin_excluded_dates(message: Message, state: FSMContext, messages: dict):
     await state.set_state(AdminSettings.excluded_dates)
     await message.answer(
         text=messages["admin_excluded_dates"],
@@ -156,7 +154,8 @@ async def admin_exluded_dates_process(
                 excluded_dates_cleared = [date for date in excluded_dates if date > datetime.now()]
 
             excluded_dates_list = [
-                datetime.strptime(date.strip(), "%d.%m.%Y") for date in excluded_dates_new.split(",")
+                datetime.strptime(date.strip(), "%d.%m.%Y")
+                for date in excluded_dates_new.split(",")
             ]
             excluded_dates_list = [date.strftime("%d.%m.%Y") for date in excluded_dates_list]
             for date in excluded_dates_cleared:

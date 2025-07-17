@@ -13,10 +13,14 @@ class ApplicationService(SQLAlchemyAsyncRepositoryService[ApplicationModel, Appl
         kwargs.setdefault("auto_commit", True)
         super().__init__(session=session, **kwargs)
 
-    async def cancel(self, application_id: str) -> None:
-        await self.update(
+    async def cancel(self, application_id: str) -> ApplicationModel:
+        return await self.update(
             {
                 "status": Status.CANCELLED,
             },
             application_id,
         )
+
+    async def get_by_number(self, number: int) -> ApplicationModel | None:
+        """Get application by number"""
+        return await self.get_one_or_none(ApplicationModel.number == number)

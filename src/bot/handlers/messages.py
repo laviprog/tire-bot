@@ -1,3 +1,4 @@
+from src.applications.models import STATUS_MAP
 from src.promo_codes import DiscountType
 
 MESSAGES = {
@@ -53,15 +54,18 @@ MESSAGES = {
         "create_application_error": "Произошла ошибка при создании заявки, попробуйте позже",
         "skip_date": "Выберите конкретное время",
         "old_date": "Данное время уже в прошлом)",
-        "location_for_application_evacuation": "Отправьте свое местоположение, нажав на кнопку ниже",
+        "location_for_application_evacuation": "Отправьте свое местоположение. Для этого нажмите на кнопку ниже, чтобы отправить вашу текущую локацию, или отправьте свое местоположение вручную, как вложение телеграм. Если у вас не получается отправить местоположение, просто напишите адрес, где находится мотоцикл.",
         "description_for_application_evacuation": "Опишите проблему с мотоциклом",
         "application": lambda motorcycle_model,
         description,
         service_datetime,
-        status: f"<b>Заявка в сервисный центр</b>:\nМотоцикл: {motorcycle_model}\nОписание: {description}\nВремя: {service_datetime.strftime('%d-%m-%Y %H:%M')}\nСтатус: {status}",
+        status: f"<b>Заявка в сервисный центр</b>:\nМотоцикл: {motorcycle_model}\nОписание: {description}\nВремя: {service_datetime.strftime('%d-%m-%Y %H:%M')}\nСтатус: {STATUS_MAP[status]}",
         "application_evacuation": lambda motorcycle_model,
         description,
-        status: f"<b>Заявка на эвакуацию:</b>\nМотоцикл: {motorcycle_model}\nОписание: {description}\nСтатус: {status}",
+        status,
+        address:
+        f"<b>Заявка на эвакуацию:</b>\nМотоцикл: {motorcycle_model}\nОписание: {description}\nСтатус: {STATUS_MAP[status]}"
+        + (f"\nАдрес: {address}" if address else ""),
         "cancel_application_error": "Не удалось отменить заявку",
         "cancel_application_successful": "Заяка успешно отменена",
         "create_application_evacuation_successful": "Ваша заявка успешно создана, мы уже спешим к вам на помощь!",
@@ -124,7 +128,160 @@ MESSAGES = {
         "promo_code_update_error": "Произошла ошибка при обновлении промокода, пожалуйста, попробуйте позже",
         "edit_promo_code_successful": "Промокод успешно обновлен!",
         "admin_excluded_dates_skipped": "Вы не указали даты, которые нужно исключить из рабочего времени. Даты не были изменены.",
-        "promo_code_added_successfully": "Промокод успешно применен!"
+        "promo_code_added_successfully": "Промокод успешно применен!",
+        "new_application_notification_for_admin": lambda application,
+        user,
+        motorcycle,
+        promo_code: (
+            f"Новая заявка в сервисный центр:\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "assigned_application_notification_for_admin": lambda application,
+        user,
+        motorcycle,
+        promo_code,
+        worker: (
+            f"Заявка в сервисный центр:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Специалист: {worker.name} @{worker.username}\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "in_progress_application_notification_for_admin": lambda application,
+        user,
+        motorcycle,
+        promo_code: (
+            f"Специалист взял в работу данную заявку:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "completed_application_notification_for_admin": lambda application,
+        user,
+        motorcycle,
+        promo_code: (
+            f"Специалист выполнил работу по заявке:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "assigned_application_notification_for_worker": lambda application,
+        user,
+        motorcycle,
+        promo_code: (
+            f"Заявка в сервисный центр:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "assigned_application_notification_for_user": lambda application, motorcycle, promo_code: (
+            f"Заявка в сервисный центр:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "completed_application_notification_for_user": lambda application, motorcycle, promo_code: (
+            f"Ваш мотоцикл готов, заберите в удобное вам время:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "application_cancelled_notification_for_worker": lambda application,
+        user,
+        motorcycle,
+        promo_code: (
+            f"Заявка была отменена администратором:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "application_cancelled_notification_for_user": lambda application, motorcycle, promo_code: (
+            f"Ваша заявка была отменена администратором:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "application_user_cancelled_notification_for_admin": lambda application,
+        user,
+        motorcycle,
+        promo_code: (
+            f"Заявка была отменена пользователем:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "application_user_cancelled_notification_for_worker": lambda application,
+        user,
+        motorcycle,
+        promo_code: (
+            f"Заявка была отменена пользователем:\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+        ),
+        "application_not_found": "К сожалению, не удалось найти заявку. Попробуйте позже.",
+        "worker_not_found": "К сожалению, не удалось найти специалиста. Попробуйте позже.",
+        "assign_application_error": "Произошла ошибка при назначении специалиста на заявку. Попробуйте позже.",
+        "status_update_error": "Произошла ошибка при обновлении статуса заявки. Попробуйте позже.",
+        "status_updated_successfully": "Статус заявки успешно обновлен!",
+        "evacuation_application_notification_for_admin": lambda application, user, motorcycle: (
+            f"Заявка на эвакуацию:\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Статус: {STATUS_MAP[application.status]}"
+        ) + (f"\nАдрес: {application.location}" if application.location else ""),
+        "evacuation_cancel_admin": "К сожалению, ваша заявка была отклонена администратором.",
+        "evacuation_cancel_notification_for_admin": lambda application, user, motorcycle: (
+            f"Заявка на эвакуацию, была отменена пользователем:\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Описание: {application.description}\n"
+            f"Статус: {STATUS_MAP[application.status]}"
+        ) + (f"\nАдрес: {application.location}" if application.location else ""),
+        "evacuation_in_progress": lambda motorcycle_model, description, status, location: (
+            f"<b>К вам спешат на помощь:</b>\n"
+            f"Мотоцикл: {motorcycle_model}\n"
+            f"Описание: {description}\n"
+            f"Статус: {STATUS_MAP[status]}" + (f"\nАдрес: {location}" if location else "")
+        ),
+        "evacuation_completed": lambda motorcycle_model, description, status, location: (
+            f"<b>Ваша заявка выполнена:</b>\n"
+            f"Мотоцикл: {motorcycle_model}\n"
+            f"Описание: {description}\n"
+            f"Статус: {STATUS_MAP[status]}" + (f"\nАдрес: {location}" if location else "")
+        ),
     },
     # "en": {...},
 }

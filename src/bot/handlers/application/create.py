@@ -27,7 +27,7 @@ from src.bot.handlers.keyboards import (
 )
 from src.bot.pagination import DatePagination
 from src.bot.pagination.pagination import TimePagination
-from src.bot.utils import send_application
+from src.bot.utils import send_application, send_evacuation
 from src.motorcycles import MotorcycleModel, MotorcycleService
 from src.promo_codes import PromoCodeService
 from src.users import UserService
@@ -256,11 +256,18 @@ async def location_for_application_evacuation(
     state: FSMContext,
     application_service: ApplicationService,
     user_service: UserService,
+    motorcycle_service: MotorcycleService,
     messages: dict,
     keyboards: dict,
+    bot: Bot,
 ):
-    latitude = message.location.latitude
-    longitude = message.location.longitude
+    latitude = None
+    longitude = None
+    if address := message.text:
+        address = address.strip()
+    else:
+        latitude = message.location.latitude
+        longitude = message.location.longitude
     data = await state.get_data()
     application = ApplicationModel(
         user_telegram_id=str(message.from_user.id),
@@ -268,10 +275,14 @@ async def location_for_application_evacuation(
         description=data.get("description"),
         latitude=latitude,
         longitude=longitude,
+        location=address,
         type=Type.EVACUATION,
     )
     try:
         application = await application_service.create(application)
+        admins = await user_service.get_admins()
+        user = await user_service.get_by_telegram_id(str(message.from_user.id))
+        motorcycle = await motorcycle_service.get(UUID(data.get("motorcycle_id")))
     except Exception as error:
         await message.answer(
             text=messages["create_application_error"],
@@ -282,22 +293,27 @@ async def location_for_application_evacuation(
     finally:
         await state.clear()
 
-    print(
-        messages["application_evacuation"](
-            motorcycle_model=data.get("motorcycle_model"),
-            description=data.get("description"),
-            status=application.status.value,
-        )
-    )
-
     await message.answer(
         text=messages["application_evacuation"](
             motorcycle_model=data.get("motorcycle_model"),
             description=data.get("description"),
             status=application.status.value,
+            address=application.location,
         ),
-        reply_markup=keyboards["application"](application.id),
+        reply_markup=keyboards["application_evacuation"](application.id),
     )
+
+    for admin in admins:
+        await send_evacuation(
+            bot=bot,
+            chat_id=admin.telegram_id,
+            text=messages["evacuation_application_notification_for_admin"](
+                application, user, motorcycle
+            ),
+            reply_markup=keyboards["new_evacuation_notification_for_admin"](application.number, application.id),
+            latitude=application.latitude,
+            longitude=application.longitude,
+        )
 
     await message.answer(
         text=messages["create_application_evacuation_successful"],
@@ -546,7 +562,10 @@ async def date_pagination_callback(callback: CallbackQuery, callback_data: DateP
 
 @router.callback_query(TimePagination.filter())
 async def time_pagination_callback(
-    callback: CallbackQuery, callback_data: TimePagination, application_service: ApplicationService, redis: Redis
+    callback: CallbackQuery,
+    callback_data: TimePagination,
+    application_service: ApplicationService,
+    redis: Redis,
 ):
     date = datetime.strptime(callback_data.date, "%d-%m-%Y")
 
@@ -651,13 +670,19 @@ async def promo_code_process(
     promo_code_service: PromoCodeService,
     application_service: ApplicationService,
     user_service: UserService,
+    motorcycle_service: MotorcycleService,
     messages: dict,
     keyboards: dict,
 ):
+    user_telegram_id = str(message.from_user.id)
     promo_code = message.text.strip()
     if promo_code not in SKIP:
-        if promo_code_id := await promo_code_service.check_code(promo_code):
-            await state.update_data(promo_code_id=promo_code_id)
+        if promo_code := await promo_code_service.check_code(promo_code):
+            await state.update_data(promo_code_id=str(promo_code.id), promo_code=promo_code)
+            await message.answer(
+                text=messages["promo_code_added_successfully"],
+                reply_markup=keyboards["user_main_menu"],
+            )
         else:
             await message.answer(
                 text=messages["not_found_promo_code"], reply_markup=keyboards["skip_step"]
@@ -665,10 +690,11 @@ async def promo_code_process(
             return
 
     data = await state.get_data()
-    service_dt = datetime.strptime(data.get("datetime"), "%d-%m-%Y %H-%M")
-    service_dt = service_dt.replace(tzinfo=timezone.utc)
+    service_dt = datetime.strptime(data.get("datetime"), "%d-%m-%Y %H-%M").replace(
+        tzinfo=timezone.utc
+    )
     application = ApplicationModel(
-        user_telegram_id=str(message.from_user.id),
+        user_telegram_id=user_telegram_id,
         motorcycle_id=data.get("motorcycle_id"),
         service_datetime=service_dt,
         description=data.get("description"),
@@ -678,6 +704,9 @@ async def promo_code_process(
     )
 
     try:
+        user = await user_service.get_by_telegram_id(user_telegram_id)
+        motorcycle = await motorcycle_service.get(UUID(data.get("motorcycle_id")))
+        promo_code = data.get("promo_code", None)
         application = await application_service.create(application)
     except Exception as error:
         await message.answer(
@@ -689,10 +718,6 @@ async def promo_code_process(
     finally:
         await state.clear()
 
-    await message.answer(
-        text=messages["promo_code_added_successfully"],
-        reply_markup=keyboards["user_main_menu"],
-    )
     await send_application(
         bot=bot,
         chat_id=message.chat.id,
@@ -707,4 +732,16 @@ async def promo_code_process(
         video_id=data.get("video_id", None),
     )
 
-    # TODO send to admin
+    admins = await user_service.get_admins()
+
+    for admin in admins:
+        await send_application(
+            bot=bot,
+            chat_id=admin.chat_id,
+            text=messages["new_application_notification_for_admin"](
+                application, user, motorcycle, promo_code
+            ),
+            reply_markup=keyboards["new_application_notification_for_admin"](application.number),
+            photo_id=data.get("photo_id", None),
+            video_id=data.get("video_id", None),
+        )
