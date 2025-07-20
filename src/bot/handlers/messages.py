@@ -78,7 +78,7 @@ MESSAGES = {
         "admin_operating_mode_saved": lambda operating_mode: f"Теперь рабочее время: {operating_mode}.",
         "admin_max_records_saved": lambda max_records: f"Теперь максимальное число записей: {max_records}.",
         "invalid_excluded_dates": "Пожалуйста, введите корректные даты в формате ДД.ММ.ГГГГ через запятую (например, 01.01.2024, 02.01.2024).",
-        "admin_excluded_dates_saved": lambda excluded_dates: f"Добавлены выходыные: {excluded_dates}.",
+        "admin_excluded_dates_saved": lambda excluded_dates: f"Добавлены выходные: {excluded_dates}.",
         "manage_roles_menu": "Вы в меню управления ролями. Здесь вы можете добавить админа или работника, а также вернуться в главное меню.",
         "add_admin_username_process": "Введите имя пользователя (например, @admin_username), которого вы хотите добавить в администраторы. Важно, чтобы пользователь был зарегистрирован в боте.",
         "add_worker_username_process": "Введите имя пользователя (например, @worker_username), которого вы хотите добавить в работники. Важно, чтобы пользователь был зарегистрирован в боте.",
@@ -282,7 +282,14 @@ MESSAGES = {
             f"Описание: {description}\n"
             f"Статус: {STATUS_MAP[status]}" + (f"\nАдрес: {location}" if location else "")
         ),
-        "application_created_successful": "Заявка была успешно создана!"
+        "application_created_successful": "Заявка была успешно создана!",
+        "admin_contacts_information": lambda contacts: (
+            f"📞 Контакты:\n"
+            f"Телефон: <code>{contacts["phone"]}</code>\n"
+            f"TG: {contacts["username"]}\n"
+        ),
+        "admin_edit_phone_contact": lambda phone: f"Текущий номер телефона для связи с пользователями: <code>{phone}</code>\nВведите новый номер телефона или оставьте без изменений, нажав на кнопку ниже.",
+        "admin_edit_username_contact": lambda username: f"Текущий username для связи с пользователями: {username}\nВведите новый username (@example_username) или оставьте без изменений, нажав на кнопку ниже.",
     },
     # "en": {...},
 }

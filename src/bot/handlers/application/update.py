@@ -1,5 +1,8 @@
+import json
+
 from aiogram import Router, Bot
 from aiogram.types import CallbackQuery
+from redis.asyncio import Redis
 
 from src import log
 from src.applications import ApplicationService, Status
@@ -23,6 +26,7 @@ async def change_status_in_progress_application_callback(
     motorcycle_service: MotorcycleService,
     promo_code_service: PromoCodeService,
     user_service: UserService,
+    redis: Redis,
 ):
     application_number = int(callback.data.split(":")[1])
     try:
@@ -39,7 +43,22 @@ async def change_status_in_progress_application_callback(
         admins = await user_service.get_admins()
         await application_service.update({"status": Status.IN_PROGRESS}, application.id)
         await callback.message.delete()
-        await send_application(
+        data = await redis.get(str(application.id))
+        data = json.loads(data) if data else {"admins": [], "user": {}, "worker": {}}
+        try:
+            for admin in data["admins"]:
+                await bot.delete_message(
+                    int(admin["chat_id"]),
+                    int(admin["message_id"]),
+                )
+            await bot.delete_message(
+                int(data["user"]["chat_id"]),
+                int(data["user"]["message_id"]),
+            )
+        except Exception as e:
+            log.error(f"Error deleting messages: {e}")
+
+        worker_message = await send_application(
             bot,
             callback.message.chat.id,
             text=messages["assigned_application_notification_for_worker"](
@@ -49,30 +68,44 @@ async def change_status_in_progress_application_callback(
             photo_id=application.photo_id,
             video_id=application.video_id,
         )
+        data["worker"] = {
+            "chat_id": worker_message.chat.id,
+            "message_id": worker_message.message_id,
+        }
         await callback.answer(text=messages["status_updated_successfully"], show_alert=True)
 
-        await send_application(
+        user_message = await send_application(
             bot,
             int(application.user_telegram_id),
             text=messages["assigned_application_notification_for_user"](
                 application, motorcycle, promo_code
             ),
-            reply_markup=keyboards["application"](application.id),
             photo_id=application.photo_id,
             video_id=application.video_id,
         )
+        data["user"] = {
+            "chat_id": user_message.chat.id,
+            "message_id": user_message.message_id,
+        }
+        data["admins"] = []
 
         for admin in admins:
-            await send_application(
+            admin_message = await send_application(
                 bot,
                 int(admin.telegram_id),
                 text=messages["in_progress_application_notification_for_admin"](
                     application, user, motorcycle, promo_code
                 ),
-                reply_markup=keyboards["admin_cancele_app"](application_number),
+                reply_markup=keyboards["admin_cancel_app"](application_number),
                 photo_id=application.photo_id,
                 video_id=application.video_id,
             )
+            data["admins"].append({
+                "chat_id": admin_message.chat.id,
+                "message_id": admin_message.message_id,
+            })
+
+        await redis.set(str(application.id), json.dumps(data))
 
     except Exception as e:
         log.error(f"Error updating application status: {e}")
@@ -90,6 +123,7 @@ async def change_status_completed_application_callback(
     motorcycle_service: MotorcycleService,
     promo_code_service: PromoCodeService,
     user_service: UserService,
+    redis: Redis,
 ):
     application_number = int(callback.data.split(":")[1])
     try:
@@ -105,7 +139,22 @@ async def change_status_completed_application_callback(
         )
         admins = await user_service.get_admins()
         await application_service.update({"status": Status.COMPLETED}, application.id)
+
+        data = await redis.get(str(application.id))
+        data = json.loads(data) if data else {"admins": [], "user": {}, "worker": {}}
         await callback.message.delete()
+        try:
+            await bot.delete_message(
+                int(data["user"]["chat_id"]),
+                int(data["user"]["message_id"]),
+            )
+            for admin in data["admins"]:
+                await bot.delete_message(
+                    int(admin["chat_id"]),
+                    int(admin["message_id"]),
+                )
+        except Exception as e:
+            log.error(f"Error deleting previous messages: {e}")
         await send_application(
             bot,
             callback.message.chat.id,
@@ -137,6 +186,7 @@ async def change_status_completed_application_callback(
                 photo_id=application.photo_id,
                 video_id=application.video_id,
             )
+        await redis.delete(str(application.id))
     except Exception as e:
         log.error(f"Error updating application status: {e}")
         await callback.answer(text=messages["status_update_error"], show_alert=True)
@@ -153,6 +203,7 @@ async def change_status_in_progress_evacuation_callback(
     bot: Bot,
     motorcycle_service: MotorcycleService,
     user_service: UserService,
+    redis: Redis
 ):
     application_number = int(callback.data.split(":")[1])
     try:
@@ -162,17 +213,38 @@ async def change_status_in_progress_evacuation_callback(
         user = await user_service.get_by_telegram_id(str(application.user_telegram_id))
         motorcycle = await motorcycle_service.get(application.motorcycle_id)
         await application_service.update({"status": Status.IN_PROGRESS}, application.id)
-        await callback.message.delete()
-        await bot.send_message(
+        data = await redis.get(str(application.id))
+        data = json.loads(data) if data else {"admins": [], "user": {}, "worker": {}}
+        try:
+            await bot.delete_message(
+                int(data["user"]["chat_id"]),
+                int(data["user"]["message_id"]),
+            )
+            for admin in data["admins"]:
+                await bot.delete_message(
+                    int(admin["chat_id"]),
+                    int(admin["message_id"]),
+                )
+        except Exception as e:
+            log.error(f"Error deleting previous messages: {e}")
+
+        data["admins"] = []
+        admin_message = await bot.send_message(
             chat_id=callback.message.chat.id,
             text=messages["evacuation_application_notification_for_admin"](
                 application, user, motorcycle
             ),
             reply_markup=keyboards["evacuation_completed"](application.number),
         )
+        data["admins"].append(
+            {
+                "chat_id": admin_message.chat.id,
+                "message_id": admin_message.message_id,
+            }
+        )
         await callback.answer(text=messages["status_updated_successfully"], show_alert=True)
 
-        await bot.send_message(
+        user_message = await bot.send_message(
             chat_id=application.user_telegram_id,
             text=messages["evacuation_in_progress"](
                 motorcycle.motorcycle_model,
@@ -182,6 +254,12 @@ async def change_status_in_progress_evacuation_callback(
             ),
             reply_markup=keyboards["application_evacuation"](application.id),
         )
+        data["user"] = {
+            "chat_id": user_message.chat.id,
+            "message_id": user_message.message_id,
+        }
+
+        await redis.set(str(application.id), json.dumps(data))
 
     except Exception as e:
         log.error(f"Error updating application status: {e}")
@@ -196,6 +274,7 @@ async def change_status_completed_evacuation_callback(
     bot: Bot,
     motorcycle_service: MotorcycleService,
     user_service: UserService,
+    redis: Redis
 ):
     application_number = int(callback.data.split(":")[1])
     try:
@@ -205,7 +284,21 @@ async def change_status_completed_evacuation_callback(
         user = await user_service.get_by_telegram_id(str(application.user_telegram_id))
         motorcycle = await motorcycle_service.get(application.motorcycle_id)
         await application_service.update({"status": Status.COMPLETED}, application.id)
-        await callback.message.delete()
+        data = await redis.get(str(application.id))
+        data = json.loads(data) if data else {"admins": [], "user": {}, "worker": {}}
+        try:
+            await bot.delete_message(
+                int(data["user"]["chat_id"]),
+                int(data["user"]["message_id"]),
+            )
+            for admin in data["admins"]:
+                await bot.delete_message(
+                    int(admin["chat_id"]),
+                    int(admin["message_id"]),
+                )
+        except Exception as e:
+            log.error(f"Error deleting previous messages: {e}")
+
         await bot.send_message(
             chat_id=callback.message.chat.id,
             text=messages["evacuation_application_notification_for_admin"](
@@ -223,6 +316,7 @@ async def change_status_completed_evacuation_callback(
                 application.location,
             ),
         )
+        await redis.delete(str(application.id))
 
     except Exception as e:
         log.error(f"Error updating application status: {e}")

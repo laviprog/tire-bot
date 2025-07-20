@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from aiogram import Router
@@ -14,6 +15,9 @@ from src.bot.handlers.keyboards import (
     OPERATING_MODE,
     EXCLUDED_DATES,
     LEAVE_UNCHANGED,
+    CONTACT_INFORMATION,
+    CHANGE_CONTACT_INFORMATION,
+    ADMIN_CONTACTS_FOR_USER,
 )
 
 router = Router()
@@ -23,6 +27,8 @@ class AdminSettings(StatesGroup):
     max_records = State()
     operating_mode = State()
     excluded_dates = State()
+    contact_phone = State()
+    contact_username = State()
 
 
 @router.message(Text(SETTINGS), IsAdmin())
@@ -30,6 +36,81 @@ async def admin_settings(message: Message, messages: dict, keyboards: dict):
     await message.answer(
         text=messages["admin_settings_menu"],
         reply_markup=keyboards["admin_settings_menu"],
+    )
+
+@router.message(Text(ADMIN_CONTACTS_FOR_USER))
+async def contacts(message: Message, redis: Redis, messages: dict):
+    admin_contacts = await redis.get("contacts_information")
+    if admin_contacts:
+        admin_contacts = json.loads(admin_contacts.decode("utf-8"))
+    await message.answer(
+        text=messages["admin_contacts_information"](admin_contacts),
+    )
+
+@router.message(Text(CONTACT_INFORMATION), IsAdmin())
+async def admin_contact_information(message: Message, redis: Redis, messages: dict, keyboards: dict, state: FSMContext):
+    admin_contacts = await redis.get("contacts_information")
+    if admin_contacts:
+        admin_contacts = json.loads(admin_contacts)
+
+    await message.answer(
+        text=messages["admin_contacts_information"](admin_contacts),
+        reply_markup=keyboards["admin_contact_information_menu"],
+    )
+
+@router.message(Text(CHANGE_CONTACT_INFORMATION), IsAdmin())
+async def admin_change_contact_information(
+    message: Message, state: FSMContext, messages: dict, keyboards: dict, redis: Redis
+):
+    admin_contacts = await redis.get("contacts_information")
+    admin_contacts = json.loads(admin_contacts)
+    phone = admin_contacts.get("phone", "+7 968 428-00-33")
+    await state.update_data(
+        phone=phone,
+        username=admin_contacts.get("username", "@CyberMot_Top"),
+    )
+    await state.set_state(AdminSettings.contact_phone)
+    await message.answer(
+        text=messages["admin_edit_phone_contact"](phone),
+        reply_markup=keyboards["leave_unchanged"],
+    )
+
+@router.message(StateFilter(AdminSettings.contact_phone), IsAdmin())
+async def admin_change_phone_process(
+    message: Message, messages: dict, keyboards: dict, state: FSMContext
+):
+    contact_phone = message.text.strip()
+    username = await state.get_value("username", "@CyberMot_Top")
+
+    if contact_phone not in LEAVE_UNCHANGED:
+        await state.update_data(phone=contact_phone)
+
+    await state.set_state(AdminSettings.contact_username)
+    await message.answer(
+        text=messages["admin_edit_username_contact"](username),
+        reply_markup=keyboards["leave_unchanged"],
+    )
+
+@router.message(StateFilter(AdminSettings.contact_username), IsAdmin())
+async def admin_change_username_process(
+    message: Message, messages: dict, keyboards: dict, redis: Redis, state: FSMContext
+):
+    contact_username = message.text.strip()
+
+    if contact_username not in LEAVE_UNCHANGED:
+        await state.update_data(username=contact_username)
+
+    data = await state.get_data()
+    admin_contacts = {
+        "phone": data.get("phone", "+7 968 428-00-33"),
+        "username": data.get("username", "@CyberMot_Top"),
+    }
+    await redis.set("contacts_information", json.dumps(admin_contacts))
+
+    await state.clear()
+    await message.answer(
+        text=messages["admin_contacts_information"](admin_contacts),
+        reply_markup=keyboards["admin_main_menu"],
     )
 
 

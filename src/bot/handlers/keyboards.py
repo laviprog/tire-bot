@@ -25,6 +25,9 @@ EXCLUDED_DATES = ["Исключить рабочие дни"]
 ADD_PROMO_CODE = ["Добавить промокод ➕"]
 CHECK_PROMO_CODES = ["Посмотреть промокоды ✅"]
 PROMO_CODES = ["Промокоды 💳"]
+CONTACT_INFORMATION = ["Контактная информация 📱"]
+CHANGE_CONTACT_INFORMATION = ["Изменить контактную информацию ✏️"]
+ADMIN_CONTACTS_FOR_USER = ["Связаться с администратором 📞"]
 
 KEYBOARDS = {
     "ru": {
@@ -38,6 +41,9 @@ KEYBOARDS = {
                     KeyboardButton(text="Мой гараж 🏍️"),
                     KeyboardButton(text="Мой профиль 👤"),
                 ],
+                [
+                    KeyboardButton(text="Связаться с администратором 📞"),
+                ]
             ],
             resize_keyboard=True,
         ),
@@ -45,6 +51,7 @@ KEYBOARDS = {
             keyboard=[
                 [
                     KeyboardButton(text="Управление ролями 👥"),
+                    KeyboardButton(text="Контактная информация 📱")
                 ],
                 [
                     KeyboardButton(text="Промокоды 💳"),
@@ -297,6 +304,15 @@ KEYBOARDS = {
                         text="Закончить эвакуацию ✅",
                         callback_data=f"completed_evacuation:{application_number}",
                     ),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "admin_contact_information_menu": ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Изменить контактную информацию ✏️"),
+                    KeyboardButton(text="Вернуться в начало ⬅️"),
                 ],
             ],
             resize_keyboard=True,
