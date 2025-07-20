@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -260,6 +261,7 @@ async def location_for_application_evacuation(
     messages: dict,
     keyboards: dict,
     bot: Bot,
+    redis: Redis,
 ):
     latitude = None
     longitude = None
@@ -293,7 +295,7 @@ async def location_for_application_evacuation(
     finally:
         await state.clear()
 
-    await message.answer(
+    user_message = await message.answer(
         text=messages["application_evacuation"](
             motorcycle_model=data.get("motorcycle_model"),
             description=data.get("description"),
@@ -303,8 +305,16 @@ async def location_for_application_evacuation(
         reply_markup=keyboards["application_evacuation"](application.id),
     )
 
+    data = {
+        "user": {
+            "chat_id": user_message.chat.id,
+            "message_id": user_message.message_id,
+        },
+        "admins": [],
+    }
+
     for admin in admins:
-        await send_evacuation(
+        admin_message = await send_evacuation(
             bot=bot,
             chat_id=admin.telegram_id,
             text=messages["evacuation_application_notification_for_admin"](
@@ -314,11 +324,19 @@ async def location_for_application_evacuation(
             latitude=application.latitude,
             longitude=application.longitude,
         )
+        data["admins"].append(
+            {
+                "chat_id": admin_message.chat.id,
+                "message_id": admin_message.message_id,
+            }
+        )
 
     await message.answer(
         text=messages["create_application_evacuation_successful"],
         reply_markup=keyboards["user_main_menu"],
     )
+
+    await redis.set(str(application.id), json.dumps(data))
 
 
 @router.callback_query(
@@ -523,7 +541,7 @@ async def get_time_paginated_kb(
             buttons_row = []
 
         slot_time = datetime.strptime(slot, "%H-%M")
-        if date.replace(hour=slot_time.hour, minute=slot_time.minute) < datetime.now():
+        if date.replace(hour=slot_time.hour, minute=slot_time.minute, tzinfo=timezone.utc) < (datetime.now(tz=timezone.utc) + timedelta(hours=3)):
             buttons_row.append(
                 InlineKeyboardButton(
                     text=slot.replace("-", ":"),
@@ -673,6 +691,7 @@ async def promo_code_process(
     motorcycle_service: MotorcycleService,
     messages: dict,
     keyboards: dict,
+    redis: Redis
 ):
     user_telegram_id = str(message.from_user.id)
     promo_code = message.text.strip()
@@ -723,7 +742,7 @@ async def promo_code_process(
     finally:
         await state.clear()
 
-    await send_application(
+    user_message = await send_application(
         bot=bot,
         chat_id=message.chat.id,
         text=messages["application"](
@@ -737,10 +756,18 @@ async def promo_code_process(
         video_id=data.get("video_id", None),
     )
 
+    data = {
+        "user": {
+            "chat_id": user_message.chat.id,
+            "message_id": user_message.message_id,
+        },
+        "admins": [],
+    }
+
     admins = await user_service.get_admins()
 
     for admin in admins:
-        await send_application(
+        admin_message = await send_application(
             bot=bot,
             chat_id=admin.chat_id,
             text=messages["new_application_notification_for_admin"](
@@ -750,3 +777,11 @@ async def promo_code_process(
             photo_id=data.get("photo_id", None),
             video_id=data.get("video_id", None),
         )
+        data["admins"].append(
+            {
+                "chat_id": admin_message.chat.id,
+                "message_id": admin_message.message_id,
+            }
+        )
+
+    await redis.set(str(application.id), json.dumps(data))

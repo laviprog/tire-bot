@@ -1,5 +1,8 @@
+import json
+
 from aiogram import Router, Bot
 from aiogram.types import CallbackQuery
+from redis.asyncio import Redis
 
 from src import log
 from src.applications import ApplicationService, Status
@@ -47,6 +50,7 @@ async def admin_assigned_worker(
     promo_code_service: PromoCodeService,
     motorcycle_service: MotorcycleService,
     bot: Bot,
+    redis: Redis,
 ):
     application_number = int(callback.data.split(":")[1])
     worker_username = callback.data.split(":")[2]
@@ -61,6 +65,7 @@ async def admin_assigned_worker(
             await callback.answer(text=messages["application_not_found"], show_alert=True)
             return
         user = await user_service.get_by_telegram_id(application.user_telegram_id)
+        admins = await user_service.get_admins()
         if not user:
             raise ValueError(f"User with telegram ID {application.user_telegram_id} not found")
         promo_code = (
@@ -72,18 +77,34 @@ async def admin_assigned_worker(
         application.status = Status.ASSIGNED
         application.worker_telegram_id = worker.telegram_id
         application = await application_service.update(application)
-        await callback.message.delete()
-        await send_application(
-            bot,
-            callback.message.chat.id,
-            text=messages["assigned_application_notification_for_admin"](
-                application, user, motorcycle, promo_code, worker
-            ),
-            reply_markup=keyboards["admin_cancel_app"](application_number),
-            photo_id=application.photo_id,
-            video_id=application.video_id,
-        )
-        await send_application(
+        data = await redis.get(str(application.id))
+        data = json.loads(data) if data else {"admins": [], "user": {}, "worker": {}}
+        try:
+            await bot.delete_message(int(data["user"]["chat_id"]), int(data["user"]["message_id"]))
+            for admin in data["admins"]:
+                await bot.delete_message(int(admin["chat_id"]), int(admin["message_id"]))
+        except Exception as e:
+            log.error(f"Error deleting previous messages: {e}")
+
+        data["admins"] = []
+        for admin in admins:
+            admin_message = await send_application(
+                bot,
+                admin.chat_id,
+                text=messages["assigned_application_notification_for_admin"](
+                    application, user, motorcycle, promo_code, worker
+                ),
+                reply_markup=keyboards["admin_cancel_app"](application_number),
+                photo_id=application.photo_id,
+                video_id=application.video_id,
+            )
+            data["admins"].append(
+                {
+                    "chat_id": admin_message.chat.id,
+                    "message_id": admin_message.message_id
+                }
+            )
+        worker_message = await send_application(
             bot,
             int(worker.chat_id),
             text=messages["assigned_application_notification_for_worker"](
@@ -93,16 +114,26 @@ async def admin_assigned_worker(
             photo_id=application.photo_id,
             video_id=application.video_id,
         )
-        await send_application(
+        data["worker"] = {
+            "chat_id": worker_message.chat.id,
+            "message_id": worker_message.message_id
+        }
+        user_message = await send_application(
             bot,
             int(user.telegram_id),
             text=messages["assigned_application_notification_for_user"](
                 application, motorcycle, promo_code
             ),
-            reply_markup=keyboards["application"](application.id),
+            # reply_markup=keyboards["application"](application.id),
             photo_id=application.photo_id,
             video_id=application.video_id,
         )
+        data["user"] = {
+            "chat_id": user_message.chat.id,
+            "message_id": user_message.message_id
+        }
+
+        await redis.set(str(application.id), json.dumps(data))
 
     except Exception as e:
         await callback.answer(text=messages["assign_application_error"], show_alert=True)

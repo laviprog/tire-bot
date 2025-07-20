@@ -1,3 +1,5 @@
+import json
+
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -36,3 +38,8 @@ async def base_settings(redis: Redis):
         await redis.set("max_records", settings.MAX_RECORDS)
     if not await redis.exists("operating_mode"):
         await redis.set("operating_mode", settings.OPERATING_MODE)
+    if not await redis.exists("contacts_information"):
+        await redis.set(
+            "contacts_information",
+            json.dumps(settings.CONTACT_INFORMATION),
+        )

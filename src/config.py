@@ -17,6 +17,10 @@ class Settings(BaseSettings):
 
     MAX_RECORDS: int = 10
     OPERATING_MODE: str = "10-20"
+    CONTACT_INFORMATION: dict = {
+        "phone": "+79684280033",
+        "username": "@CyberMot_Top",
+    }
 
     @property
     def REDIS_URL(self):
