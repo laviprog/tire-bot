@@ -16,8 +16,10 @@ CHECK_MOTORCYCLE = ["Посмотреть мотоциклы 🏍️"]
 GARAGE = ["Мой гараж 🏍️"]
 SETTINGS = ["Настройки ⚙️"]
 MANAGE_ROLES = ["Управление ролями 👥"]
+LIST_APPLICATIONS_LAST_2_WEEKS = ["Заявки за последние 2 недели"]
 ADD_ADMIN = ["Добавить админа"]
 ADD_WORKER = ["Добавить работника"]
+LIST_ADMINS_AND_WORKERS = ["Список админов и работников"]
 
 MAX_RECORDS = ["Максимальное количество записей"]
 OPERATING_MODE = ["Режим работы"]
@@ -43,7 +45,7 @@ KEYBOARDS = {
                 ],
                 [
                     KeyboardButton(text="Связаться с администратором 📞"),
-                ]
+                ],
             ],
             resize_keyboard=True,
         ),
@@ -51,8 +53,9 @@ KEYBOARDS = {
             keyboard=[
                 [
                     KeyboardButton(text="Управление ролями 👥"),
-                    KeyboardButton(text="Контактная информация 📱")
+                    KeyboardButton(text="Контактная информация 📱"),
                 ],
+                [KeyboardButton(text="Заявки за последние 2 недели")],
                 [
                     KeyboardButton(text="Промокоды 💳"),
                     KeyboardButton(text="Настройки ⚙️"),
@@ -65,6 +68,9 @@ KEYBOARDS = {
                 [
                     KeyboardButton(text="Добавить админа"),
                     KeyboardButton(text="Добавить работника"),
+                ],
+                [
+                    KeyboardButton(text="Список админов и работников"),
                 ],
                 [
                     KeyboardButton(text="Вернуться в начало ⬅️"),
@@ -215,7 +221,8 @@ KEYBOARDS = {
             ],
             resize_keyboard=True,
         ),
-        "new_evacuation_notification_for_admin": lambda application_number, application_id: InlineKeyboardMarkup(
+        "new_evacuation_notification_for_admin": lambda application_number,
+        application_id: InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
@@ -313,6 +320,17 @@ KEYBOARDS = {
                 [
                     KeyboardButton(text="Изменить контактную информацию ✏️"),
                     KeyboardButton(text="Вернуться в начало ⬅️"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+        "confirm_completion": lambda application_number: InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Подтвердить выполнение ✅",
+                        callback_data=f"confirm_completion:{application_number}",
+                    ),
                 ],
             ],
             resize_keyboard=True,

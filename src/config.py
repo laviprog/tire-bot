@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     CONTACT_INFORMATION: dict = {
         "phone": "+79684280033",
         "username": "@CyberMot_Top",
+        "name": "Cybermoto",
     }
 
     @property

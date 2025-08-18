@@ -1,4 +1,4 @@
-from src.applications.models import STATUS_MAP
+from src.applications.models import STATUS_MAP, TYPE_MAP
 from src.promo_codes import DiscountType
 
 MESSAGES = {
@@ -49,8 +49,9 @@ MESSAGES = {
         "description_for_application_service": "Опишите проблему с мотоциклом или услугу, которую вы хотите получить",
         "send_media_for_application_service": "Прикрепите фото или видео, если это необходимо, иначе пропустите этот шаг",
         "media_for_application_service_not_valid": "Прикрепите фото или видео, иначе пропустите этот шаг",
+        "photo_result_not_valid": "Отправьте фото результата работы по заявке",
         "promo_code_for_application_service": "Если у вас есть промокод, введите его здесь, иначе пропустите этот шаг",
-        "not_found_promo_code": "Введенный вами промокод не существует, проверьте, что вы написали его правильно",
+        "not_found_promo_code": "Введенный вами промокод недействительный или не существует, проверьте, что вы написали его правильно",
         "create_application_error": "Произошла ошибка при создании заявки, попробуйте позже",
         "skip_date": "Выберите конкретное время",
         "old_date": "Данное время уже в прошлом)",
@@ -63,8 +64,7 @@ MESSAGES = {
         "application_evacuation": lambda motorcycle_model,
         description,
         status,
-        address:
-        f"<b>Заявка на эвакуацию:</b>\nМотоцикл: {motorcycle_model}\nОписание: {description}\nСтатус: {STATUS_MAP[status]}"
+        address: f"<b>Заявка на эвакуацию:</b>\nМотоцикл: {motorcycle_model}\nОписание: {description}\nСтатус: {STATUS_MAP[status]}"
         + (f"\nАдрес: {address}" if address else ""),
         "cancel_application_error": "Не удалось отменить заявку",
         "cancel_application_successful": "Заяка успешно отменена",
@@ -153,6 +153,7 @@ MESSAGES = {
             f"Описание: {application.description}\n"
             f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
             f"Промокод: {promo_code.code if promo_code else '-'}\n"
+            f"Комментарий администратора: {application.admin_comment if application.admin_comment else '-'}"
         ),
         "in_progress_application_notification_for_admin": lambda application,
         user,
@@ -189,6 +190,7 @@ MESSAGES = {
             f"Описание: {application.description}\n"
             f"Дата и время: {application.service_datetime.strftime('%d-%m-%Y %H:%M')}\n"
             f"Промокод: {promo_code.code if promo_code else '-'}\n"
+            f"Комментарий администратора: {application.admin_comment if application.admin_comment else '-'}"
         ),
         "assigned_application_notification_for_user": lambda application, motorcycle, promo_code: (
             f"Заявка в сервисный центр:\n"
@@ -261,7 +263,8 @@ MESSAGES = {
             f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
             f"Описание: {application.description}\n"
             f"Статус: {STATUS_MAP[application.status]}"
-        ) + (f"\nАдрес: {application.location}" if application.location else ""),
+        )
+        + (f"\nАдрес: {application.location}" if application.location else ""),
         "evacuation_cancel_admin": "К сожалению, ваша заявка была отклонена администратором.",
         "evacuation_cancel_notification_for_admin": lambda application, user, motorcycle: (
             f"Заявка на эвакуацию, была отменена пользователем:\n"
@@ -269,7 +272,8 @@ MESSAGES = {
             f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
             f"Описание: {application.description}\n"
             f"Статус: {STATUS_MAP[application.status]}"
-        ) + (f"\nАдрес: {application.location}" if application.location else ""),
+        )
+        + (f"\nАдрес: {application.location}" if application.location else ""),
         "evacuation_in_progress": lambda motorcycle_model, description, status, location: (
             f"<b>К вам спешат на помощь:</b>\n"
             f"Мотоцикл: {motorcycle_model}\n"
@@ -285,11 +289,32 @@ MESSAGES = {
         "application_created_successful": "Заявка была успешно создана!",
         "admin_contacts_information": lambda contacts: (
             f"📞 Контакты:\n"
-            f"Телефон: <code>{contacts["phone"]}</code>\n"
-            f"TG: {contacts["username"]}\n"
+            f"Имя: {contacts['name']}\n"
+            f"Телефон: <code>{contacts['phone']}</code>\n"
+            f"TG: {contacts['username']}\n"
         ),
+        "admin_tg": lambda username: f"Или свяжитесь через телеграм: {username}",
         "admin_edit_phone_contact": lambda phone: f"Текущий номер телефона для связи с пользователями: <code>{phone}</code>\nВведите новый номер телефона или оставьте без изменений, нажав на кнопку ниже.",
         "admin_edit_username_contact": lambda username: f"Текущий username для связи с пользователями: {username}\nВведите новый username (@example_username) или оставьте без изменений, нажав на кнопку ниже.",
+        "admin_edit_name_contact": lambda name: f"Текущее имя для связи с пользователями: {name}\nВведите новое имя или оставьте без изменений, нажав на кнопку ниже.",
+        "list_admins_and_workers": lambda admins,
+        workers: f"Админы:\n{'\n'.join(f'@{admin.username}' for admin in admins)}\n\n"
+        f"Работники:\n{'\n'.join(f'@{worker.username}' for worker in workers)}",
+        "no_applications_last_2_weeks": "За последние две недели не было ни одной заявки",
+        "application_info": lambda application, worker, user, motorcycle, promo_code: (
+            f"Заявка №{application.number}\n"
+            f"Статус: {STATUS_MAP[application.status]}\n"
+            f"Тип заявки: {TYPE_MAP[application.type]}\n"
+            f"Мотоцикл: {motorcycle.motorcycle_model} ({motorcycle.year})\n"
+            f"Клиент: {user.name} @{user.username} <code>{user.phone_number}</code>\n"
+            f"Описание: {application.description or 'Нет описания'}\n"
+            f"Промокод: {promo_code.code if promo_code else '-'}\n"
+            f"Специалист: {f'{worker.name} @{worker.username}' if worker else '-'}"
+        ),
+        "add_admin_comment": "Добавьте комментарий для специалиста или нажмите пропустить",
+        "admin_comment_has_been_added": "Вы успешно добавили комментарий",
+        "add_admin_comment_error": "К сожалению, во время добавления комментария произошла ошибка",
+        "add_photo_result": "Прикрепите фото результата работы",
     },
     # "en": {...},
 }

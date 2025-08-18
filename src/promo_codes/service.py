@@ -23,7 +23,7 @@ class PromoCodeService(SQLAlchemyAsyncRepositoryService[PromoCodeModel, PromoCod
         """
         return await self.get_one_or_none(PromoCodeModel.code == promo_code.strip())
 
-    async def mark_as_used(self, promo_code: str) -> None:
+    async def mark_as_used(self, promo_code: str) -> PromoCodeModel | None:
         """
         Mark the promo code as used.
         :param promo_code: The promo code to mark as used.
@@ -31,10 +31,10 @@ class PromoCodeService(SQLAlchemyAsyncRepositoryService[PromoCodeModel, PromoCod
         promo = await self.get_one_or_none(PromoCodeModel.code == promo_code)
 
         if not promo:
-            return
+            return None
 
         promo.used_count += 1
-        await self.update(promo)
+        return await self.update(promo)
 
     async def validate(self, promo_code: str) -> bool:
         """

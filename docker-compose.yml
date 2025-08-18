@@ -25,19 +25,6 @@ services:
     networks:
       - tire-bot-network
 
-  tire-bot-pgadmin:
-    image: dpage/pgadmin4
-    container_name: tire-bot-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ports:
-      - "127.0.0.1:5050:80"
-    depends_on:
-      - tire-bot-postgres
-    networks:
-      - tire-bot-network
-
   tire-bot-redis:
     image: redis:latest
     container_name: tire-bot-redis
