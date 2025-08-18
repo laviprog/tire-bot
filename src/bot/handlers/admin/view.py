@@ -33,7 +33,9 @@ async def list_application_last_2_weeks(
         promo_code = application.promo_code
         if application.photo_id or application.photo_result_id:
             media_group = MediaGroupBuilder(
-                caption=messages["application_info"](application, worker, user, motorcycle, promo_code)
+                caption=messages["application_info"](
+                    application, worker, user, motorcycle, promo_code
+                )
             )
             if application.photo_id:
                 media_group.add_photo(media=application.photo_id)

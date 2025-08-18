@@ -45,9 +45,6 @@ async def contacts(message: Message, redis: Redis, messages: dict):
     admin_contacts = await redis.get("contacts_information")
     if admin_contacts:
         admin_contacts = json.loads(admin_contacts.decode("utf-8"))
-    # await message.answer(
-    #     text=messages["admin_contacts_information"](admin_contacts),
-    # )
     await message.answer_contact(
         admin_contacts["phone"],
         admin_contacts["name"],

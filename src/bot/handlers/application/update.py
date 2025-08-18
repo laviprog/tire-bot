@@ -171,8 +171,7 @@ async def getting_photo_result(
         return
     try:
         application = await application_service.update(
-            {"photo_result_id": photo_result_id},
-            item_id=application_id
+            {"photo_result_id": photo_result_id}, item_id=application_id
         )
         user = await user_service.get_by_telegram_id(str(application.user_telegram_id))
         motorcycle = await motorcycle_service.get(application.motorcycle_id)
@@ -204,7 +203,7 @@ async def getting_photo_result(
             text=messages["assigned_application_notification_for_worker"](
                 application, user, motorcycle, promo_code
             ),
-            photo_id=photo_result_id
+            photo_id=photo_result_id,
         )
 
         data = {"admins": []}
@@ -217,7 +216,7 @@ async def getting_photo_result(
                     application, user, motorcycle, promo_code
                 ),
                 photo_id=application.photo_result_id,
-                reply_markup=keyboards['confirm_completion'](application.number),
+                reply_markup=keyboards["confirm_completion"](application.number),
             )
             data["admins"].append(
                 {
@@ -231,9 +230,8 @@ async def getting_photo_result(
 
     await state.clear()
 
-@router.callback_query(
-    lambda callback_name: callback_name.data.startswith("confirm_completion:")
-)
+
+@router.callback_query(lambda callback_name: callback_name.data.startswith("confirm_completion:"))
 async def confirm_completion(
     callback: CallbackQuery,
     application_service: ApplicationService,
@@ -242,7 +240,7 @@ async def confirm_completion(
     motorcycle_service: MotorcycleService,
     promo_code_service: PromoCodeService,
     user_service: UserService,
-    redis: Redis
+    redis: Redis,
 ):
     application_number = int(callback.data.split(":")[1])
     try:
@@ -250,7 +248,11 @@ async def confirm_completion(
         if not application:
             raise ValueError(f"Application with number {application_number} not found")
         motorcycle = await motorcycle_service.get(application.motorcycle_id)
-        promo_code = await promo_code_service.get(application.promo_code_id) if application.promo_code_id else None
+        promo_code = (
+            await promo_code_service.get(application.promo_code_id)
+            if application.promo_code_id
+            else None
+        )
         user = await user_service.get_by_telegram_id(application.user_telegram_id)
         await send_application(
             bot,
