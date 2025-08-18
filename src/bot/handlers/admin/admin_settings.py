@@ -29,6 +29,7 @@ class AdminSettings(StatesGroup):
     excluded_dates = State()
     contact_phone = State()
     contact_username = State()
+    contact_name = State()
 
 
 @router.message(Text(SETTINGS), IsAdmin())
@@ -38,17 +39,28 @@ async def admin_settings(message: Message, messages: dict, keyboards: dict):
         reply_markup=keyboards["admin_settings_menu"],
     )
 
+
 @router.message(Text(ADMIN_CONTACTS_FOR_USER))
 async def contacts(message: Message, redis: Redis, messages: dict):
     admin_contacts = await redis.get("contacts_information")
     if admin_contacts:
         admin_contacts = json.loads(admin_contacts.decode("utf-8"))
+    # await message.answer(
+    #     text=messages["admin_contacts_information"](admin_contacts),
+    # )
+    await message.answer_contact(
+        admin_contacts["phone"],
+        admin_contacts["name"],
+    )
     await message.answer(
-        text=messages["admin_contacts_information"](admin_contacts),
+        text=messages["admin_tg"](admin_contacts["username"]),
     )
 
+
 @router.message(Text(CONTACT_INFORMATION), IsAdmin())
-async def admin_contact_information(message: Message, redis: Redis, messages: dict, keyboards: dict, state: FSMContext):
+async def admin_contact_information(
+    message: Message, redis: Redis, messages: dict, keyboards: dict, state: FSMContext
+):
     admin_contacts = await redis.get("contacts_information")
     if admin_contacts:
         admin_contacts = json.loads(admin_contacts)
@@ -57,6 +69,7 @@ async def admin_contact_information(message: Message, redis: Redis, messages: di
         text=messages["admin_contacts_information"](admin_contacts),
         reply_markup=keyboards["admin_contact_information_menu"],
     )
+
 
 @router.message(Text(CHANGE_CONTACT_INFORMATION), IsAdmin())
 async def admin_change_contact_information(
@@ -68,6 +81,7 @@ async def admin_change_contact_information(
     await state.update_data(
         phone=phone,
         username=admin_contacts.get("username", "@CyberMot_Top"),
+        name=admin_contacts.get("name", "Иван"),
     )
     await state.set_state(AdminSettings.contact_phone)
     await message.answer(
@@ -75,21 +89,40 @@ async def admin_change_contact_information(
         reply_markup=keyboards["leave_unchanged"],
     )
 
+
 @router.message(StateFilter(AdminSettings.contact_phone), IsAdmin())
 async def admin_change_phone_process(
     message: Message, messages: dict, keyboards: dict, state: FSMContext
 ):
     contact_phone = message.text.strip()
-    username = await state.get_value("username", "@CyberMot_Top")
+    name = await state.get_value("name", "Иван")
 
     if contact_phone not in LEAVE_UNCHANGED:
         await state.update_data(phone=contact_phone)
+
+    await state.set_state(AdminSettings.contact_name)
+    await message.answer(
+        text=messages["admin_edit_name_contact"](name),
+        reply_markup=keyboards["leave_unchanged"],
+    )
+
+
+@router.message(StateFilter(AdminSettings.contact_name), IsAdmin())
+async def admin_change_name_process(
+    message: Message, messages: dict, keyboards: dict, state: FSMContext
+):
+    contact_name = message.text.strip()
+    username = await state.get_value("username", "@CyberMot_Top")
+
+    if contact_name not in LEAVE_UNCHANGED:
+        await state.update_data(name=contact_name)
 
     await state.set_state(AdminSettings.contact_username)
     await message.answer(
         text=messages["admin_edit_username_contact"](username),
         reply_markup=keyboards["leave_unchanged"],
     )
+
 
 @router.message(StateFilter(AdminSettings.contact_username), IsAdmin())
 async def admin_change_username_process(
@@ -104,6 +137,7 @@ async def admin_change_username_process(
     admin_contacts = {
         "phone": data.get("phone", "+7 968 428-00-33"),
         "username": data.get("username", "@CyberMot_Top"),
+        "name": data.get("name", "Иван"),
     }
     await redis.set("contacts_information", json.dumps(admin_contacts))
 

@@ -30,6 +30,12 @@ class Status(str, Enum):
     CANCELLED = "cancelled"
 
 
+TYPE_MAP = {
+    Type.SERVICE: "Сервис",
+    Type.EVACUATION: "Эвакуация",
+}
+
+
 STATUS_MAP = {
     Status.NEW: "Новая заявка",
     Status.ASSIGNED: "Назначен специалист",
@@ -49,7 +55,9 @@ class ApplicationModel(UUIDAuditBase):
     )
     type: Mapped[Type] = mapped_column(SQLAlchemyEnum(Type), default=Type.SERVICE)
     status: Mapped[Status] = mapped_column(SQLAlchemyEnum(Status), default=Status.NEW)
+    admin_comment: Mapped[str | None]
     description: Mapped[str | None]
+    photo_result_id: Mapped[str | None]
     photo_id: Mapped[str | None]
     video_id: Mapped[str | None]
     service_datetime: Mapped[datetime | None]
@@ -62,6 +70,10 @@ class ApplicationModel(UUIDAuditBase):
     motorcycle_id: Mapped[UUID | None] = mapped_column(ForeignKey("motorcycles.id"))
     promo_code_id: Mapped[UUID | None] = mapped_column(ForeignKey("promo_codes.id"))
 
-    owner: Mapped["UserModel"] = relationship(back_populates="applications")
-    motorcycle: Mapped["MotorcycleModel | None"] = relationship(back_populates="applications")
-    promo_code: Mapped["PromoCodeModel | None"] = relationship(back_populates="applications")
+    owner: Mapped["UserModel"] = relationship(back_populates="applications", lazy="selectin")
+    motorcycle: Mapped["MotorcycleModel | None"] = relationship(
+        back_populates="applications", lazy="selectin"
+    )
+    promo_code: Mapped["PromoCodeModel | None"] = relationship(
+        back_populates="applications", lazy="selectin"
+    )

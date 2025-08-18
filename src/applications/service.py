@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
 
 from .models import ApplicationModel, Status
@@ -14,6 +16,7 @@ class ApplicationService(SQLAlchemyAsyncRepositoryService[ApplicationModel, Appl
         super().__init__(session=session, **kwargs)
 
     async def cancel(self, application_id: str) -> ApplicationModel:
+        """Cancel application by ID"""
         return await self.update(
             {
                 "status": Status.CANCELLED,
@@ -24,3 +27,13 @@ class ApplicationService(SQLAlchemyAsyncRepositoryService[ApplicationModel, Appl
     async def get_by_number(self, number: int) -> ApplicationModel | None:
         """Get application by number"""
         return await self.get_one_or_none(ApplicationModel.number == number)
+
+    async def get_list_created_within(self, duration: timedelta) -> list[ApplicationModel]:
+        """List applications created within the last `duration`."""
+        return (
+            await self.list(
+                ApplicationModel.created_at > datetime.now(tz=timezone.utc) - duration,
+                order_by=ApplicationModel.number.asc(),
+            )
+            or []
+        )

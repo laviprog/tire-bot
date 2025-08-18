@@ -30,7 +30,7 @@ from src.bot.pagination import DatePagination
 from src.bot.pagination.pagination import TimePagination
 from src.bot.utils import send_application, send_evacuation
 from src.motorcycles import MotorcycleModel, MotorcycleService
-from src.promo_codes import PromoCodeService
+from src.promo_codes import PromoCodeService, PromoCodeModel
 from src.users import UserService
 
 router = Router()
@@ -320,7 +320,9 @@ async def location_for_application_evacuation(
             text=messages["evacuation_application_notification_for_admin"](
                 application, user, motorcycle
             ),
-            reply_markup=keyboards["new_evacuation_notification_for_admin"](application.number, application.id),
+            reply_markup=keyboards["new_evacuation_notification_for_admin"](
+                application.number, application.id
+            ),
             latitude=application.latitude,
             longitude=application.longitude,
         )
@@ -541,7 +543,9 @@ async def get_time_paginated_kb(
             buttons_row = []
 
         slot_time = datetime.strptime(slot, "%H-%M")
-        if date.replace(hour=slot_time.hour, minute=slot_time.minute, tzinfo=timezone.utc) < (datetime.now(tz=timezone.utc) + timedelta(hours=3)):
+        if date.replace(hour=slot_time.hour, minute=slot_time.minute, tzinfo=timezone.utc) < (
+            datetime.now(tz=timezone.utc) + timedelta(hours=3)
+        ):
             buttons_row.append(
                 InlineKeyboardButton(
                     text=slot.replace("-", ":"),
@@ -691,13 +695,15 @@ async def promo_code_process(
     motorcycle_service: MotorcycleService,
     messages: dict,
     keyboards: dict,
-    redis: Redis
+    redis: Redis,
 ):
     user_telegram_id = str(message.from_user.id)
     promo_code = message.text.strip()
+    promo_code_obj: PromoCodeModel | None = None
     if promo_code not in SKIP:
-        if promo_code := await promo_code_service.check_code(promo_code):
-            await state.update_data(promo_code_id=str(promo_code.id), promo_code=promo_code)
+        if await promo_code_service.validate(promo_code):
+            promo_code_obj = await promo_code_service.mark_as_used(promo_code)
+            await state.update_data(promo_code_id=str(promo_code_obj.id))
             await message.answer(
                 text=messages["promo_code_added_successfully"],
                 reply_markup=keyboards["user_main_menu"],
@@ -730,7 +736,6 @@ async def promo_code_process(
     try:
         user = await user_service.get_by_telegram_id(user_telegram_id)
         motorcycle = await motorcycle_service.get(UUID(data.get("motorcycle_id")))
-        promo_code = data.get("promo_code", None)
         application = await application_service.create(application)
     except Exception as error:
         await message.answer(
@@ -742,6 +747,9 @@ async def promo_code_process(
     finally:
         await state.clear()
 
+    photo_id = data.get("photo_id", None)
+    video_id = data.get("video_id", None)
+
     user_message = await send_application(
         bot=bot,
         chat_id=message.chat.id,
@@ -752,8 +760,8 @@ async def promo_code_process(
             status=application.status.value,
         ),
         reply_markup=keyboards["application"](application.id),
-        photo_id=data.get("photo_id", None),
-        video_id=data.get("video_id", None),
+        photo_id=photo_id,
+        video_id=video_id,
     )
 
     data = {
@@ -771,11 +779,11 @@ async def promo_code_process(
             bot=bot,
             chat_id=admin.chat_id,
             text=messages["new_application_notification_for_admin"](
-                application, user, motorcycle, promo_code
+                application, user, motorcycle, promo_code_obj
             ),
             reply_markup=keyboards["new_application_notification_for_admin"](application.number),
-            photo_id=data.get("photo_id", None),
-            video_id=data.get("video_id", None),
+            photo_id=photo_id,
+            video_id=video_id,
         )
         data["admins"].append(
             {
