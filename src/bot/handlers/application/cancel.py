@@ -1,4 +1,5 @@
 import json
+from uuid import UUID
 
 from aiogram import Router, Bot
 from aiogram.types import CallbackQuery
@@ -80,7 +81,7 @@ async def admin_cancel_application_callback(
 ):
     application_id = callback.data.split(":")[1]
     try:
-        application = await application_service.cancel(application_id)
+        application = await application_service.cancel(UUID(application_id))
         user = await user_service.get_by_telegram_id(application.user_telegram_id)
         motorcycle = await motorcycle_service.get(application.motorcycle_id)
         promo_code = (
@@ -152,7 +153,7 @@ async def admin_cancel_evacuation_callback(
 ):
     application_id = callback.data.split(":")[1]
     try:
-        application = await application_service.cancel(application_id)
+        application = await application_service.cancel(UUID(application_id))
     except Exception as e:
         await callback.answer(text=messages["cancel_application_error"], show_alert=True)
         log.error(f"Ошибка при отмене заявки с ID {application_id}: {e}")
@@ -194,7 +195,7 @@ async def cancel_evacuation_callback(
 ):
     application_id = callback.data.split(":")[1]
     try:
-        application = await application_service.cancel(application_id)
+        application = await application_service.cancel(UUID(application_id))
         admins = await user_service.get_admins()
         user = await user_service.get_by_telegram_id(application.user_telegram_id)
         motorcycle = await motorcycle_service.get(application.motorcycle_id)

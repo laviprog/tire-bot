@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 
 from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
 
@@ -15,7 +16,7 @@ class ApplicationService(SQLAlchemyAsyncRepositoryService[ApplicationModel, Appl
         kwargs.setdefault("auto_commit", True)
         super().__init__(session=session, **kwargs)
 
-    async def cancel(self, application_id: str) -> ApplicationModel:
+    async def cancel(self, application_id: UUID) -> ApplicationModel:
         """Cancel application by ID"""
         return await self.update(
             {
