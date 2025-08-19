@@ -124,6 +124,11 @@ async def add_admin_comment(
                 reply_markup=keyboards["admin_main_menu"],
             )
             log.error(f"Error adding comment to application {application_id}: {e}")
+    else:
+        await message.answer(
+            text=messages["admin_comment_skip"],
+            reply_markup=keyboards["admin_main_menu"],
+        )
 
     await state.clear()
 
