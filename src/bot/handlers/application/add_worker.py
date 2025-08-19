@@ -166,7 +166,7 @@ async def add_admin_comment(
                 text=messages["assigned_application_notification_for_admin"](
                     application, user, motorcycle, promo_code, worker
                 ),
-                reply_markup=keyboards["admin_cancel_app"](application_number),
+                reply_markup=keyboards["admin_cancel_app"](application.id),
                 photo_id=application.photo_id,
                 video_id=application.video_id,
             )
